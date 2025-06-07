@@ -1,13 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Key, Globe, Brain, Save, TestTube } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Settings, Key, Globe, Brain, Save, TestTube, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { aiService } from '@/services/aiService';
 
 interface AIConfigurationProps {
   isOpen: boolean;
@@ -20,6 +22,8 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
   const [selectedModel, setSelectedModel] = useState('gpt-4');
   const [provider, setProvider] = useState('openai');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [connectionError, setConnectionError] = useState<string>('');
   const { toast } = useToast();
 
   const providers = [
@@ -60,40 +64,73 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
     custom: []
   };
 
+  useEffect(() => {
+    // Load existing configuration
+    const stored = localStorage.getItem('ai_config');
+    if (stored) {
+      try {
+        const config = JSON.parse(stored);
+        setProvider(config.provider || 'openai');
+        setApiKey(config.apiKey || '');
+        setBaseUrl(config.baseUrl || 'https://api.openai.com/v1');
+        setSelectedModel(config.model || 'gpt-4');
+      } catch (error) {
+        console.error('Failed to load stored config:', error);
+      }
+    }
+  }, [isOpen]);
+
   const handleProviderChange = (newProvider: string) => {
     setProvider(newProvider);
     const providerConfig = providers.find(p => p.id === newProvider);
-    if (providerConfig) {
+    if (providerConfig && providerConfig.baseUrl) {
       setBaseUrl(providerConfig.baseUrl);
     }
     setSelectedModel('');
+    setConnectionStatus('idle');
+    setConnectionError('');
   };
 
   const handleSaveConfiguration = async () => {
     setIsConnecting(true);
+    setConnectionError('');
     
     try {
-      // Save to localStorage for now (will integrate with Supabase later)
+      if (!apiKey.trim()) {
+        throw new Error('API Key is required');
+      }
+      if (!selectedModel.trim()) {
+        throw new Error('Model selection is required');
+      }
+      if (!baseUrl.trim()) {
+        throw new Error('Base URL is required');
+      }
+
       const config = {
         provider,
-        apiKey,
-        baseUrl,
-        model: selectedModel,
+        apiKey: apiKey.trim(),
+        baseUrl: baseUrl.trim(),
+        model: selectedModel.trim(),
         timestamp: new Date().toISOString()
       };
       
-      localStorage.setItem('ai_config', JSON.stringify(config));
+      aiService.updateConfig(config);
       
       toast({
         title: "Configuration Saved",
         description: `Successfully configured ${providers.find(p => p.id === provider)?.name} with model ${selectedModel}`,
       });
       
-      onClose();
+      setConnectionStatus('success');
+      setTimeout(() => onClose(), 1500);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setConnectionError(errorMessage);
+      setConnectionStatus('error');
+      
       toast({
         title: "Configuration Failed",
-        description: "Failed to save AI configuration. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -103,19 +140,55 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
 
   const handleTestConnection = async () => {
     setIsConnecting(true);
+    setConnectionError('');
+    setConnectionStatus('idle');
     
     try {
-      // Test API connection (placeholder implementation)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!apiKey.trim()) {
+        throw new Error('API Key is required for testing');
+      }
+      if (!selectedModel.trim()) {
+        throw new Error('Model selection is required for testing');
+      }
+      if (!baseUrl.trim()) {
+        throw new Error('Base URL is required for testing');
+      }
+
+      // Temporarily update the service with current values for testing
+      const testConfig = {
+        provider,
+        apiKey: apiKey.trim(),
+        baseUrl: baseUrl.trim(),
+        model: selectedModel.trim()
+      };
+      
+      aiService.updateConfig(testConfig);
+      
+      const result = await aiService.testConnection();
+      
+      if (result.success) {
+        setConnectionStatus('success');
+        toast({
+          title: "Connection Successful",
+          description: "Successfully connected to the AI service!",
+        });
+      } else {
+        setConnectionStatus('error');
+        setConnectionError(result.error || 'Connection test failed');
+        toast({
+          title: "Connection Failed",
+          description: result.error || 'Connection test failed',
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setConnectionStatus('error');
+      setConnectionError(errorMessage);
       
       toast({
-        title: "Connection Test",
-        description: "API connection test completed successfully!",
-      });
-    } catch (error) {
-      toast({
-        title: "Connection Failed",
-        description: "Unable to connect to the API. Please check your configuration.",
+        title: "Connection Test Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -138,6 +211,23 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Connection Status Alert */}
+          {connectionStatus === 'error' && connectionError && (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>{connectionError}</AlertDescription>
+            </Alert>
+          )}
+          
+          {connectionStatus === 'success' && (
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                Connection test successful! Configuration is working properly.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Provider Selection */}
           <div className="space-y-2">
             <Label htmlFor="provider">AI Provider</Label>
@@ -166,8 +256,17 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
               type="password"
               placeholder="Enter your API key"
               value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                setConnectionStatus('idle');
+                setConnectionError('');
+              }}
             />
+            {provider === 'openai' && (
+              <p className="text-xs text-muted-foreground">
+                Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">OpenAI Platform</a>
+              </p>
+            )}
           </div>
 
           {/* Base URL */}
@@ -180,7 +279,11 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
               id="baseUrl"
               placeholder="API base URL"
               value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
+              onChange={(e) => {
+                setBaseUrl(e.target.value);
+                setConnectionStatus('idle');
+                setConnectionError('');
+              }}
             />
           </div>
 
@@ -190,7 +293,11 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
               <Brain className="h-4 w-4" />
               Model
             </Label>
-            <Select value={selectedModel} onValueChange={setSelectedModel}>
+            <Select value={selectedModel} onValueChange={(value) => {
+              setSelectedModel(value);
+              setConnectionStatus('idle');
+              setConnectionError('');
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select model" />
               </SelectTrigger>
@@ -205,13 +312,22 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
           </div>
 
           {/* Status */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={apiKey ? "default" : "secondary"}>
               {apiKey ? "API Key Set" : "No API Key"}
             </Badge>
             <Badge variant={selectedModel ? "default" : "secondary"}>
               {selectedModel ? "Model Selected" : "No Model"}
             </Badge>
+            <Badge variant={baseUrl ? "default" : "secondary"}>
+              {baseUrl ? "URL Configured" : "No Base URL"}
+            </Badge>
+            {connectionStatus === 'success' && (
+              <Badge variant="default" className="bg-green-600">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Connected
+              </Badge>
+            )}
           </div>
 
           {/* Actions */}
@@ -219,19 +335,19 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
             <Button 
               onClick={handleTestConnection} 
               variant="outline" 
-              disabled={!apiKey || !selectedModel || isConnecting}
+              disabled={!apiKey || !selectedModel || !baseUrl || isConnecting}
               className="flex-1"
             >
               <TestTube className="h-4 w-4 mr-2" />
-              Test Connection
+              {isConnecting ? 'Testing...' : 'Test Connection'}
             </Button>
             <Button 
               onClick={handleSaveConfiguration} 
-              disabled={!apiKey || !selectedModel || isConnecting}
+              disabled={!apiKey || !selectedModel || !baseUrl || isConnecting}
               className="flex-1"
             >
               <Save className="h-4 w-4 mr-2" />
-              Save Configuration
+              {isConnecting ? 'Saving...' : 'Save Configuration'}
             </Button>
             <Button variant="outline" onClick={onClose}>
               Cancel

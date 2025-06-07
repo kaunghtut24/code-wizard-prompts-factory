@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -118,34 +117,78 @@ const Index = () => {
       return;
     }
 
+    if (!input.trim()) {
+      toast({
+        title: "Input Required",
+        description: "Please enter your request before processing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
-    setOutput('');
+    setOutput('Processing your request...');
     
     try {
+      console.log('Starting AI processing with agent:', activeAgent);
+      
       const messages = [
-        { role: 'user' as const, content: input }
+        { role: 'user' as const, content: input.trim() }
       ];
       
       const response = await aiService.chat(messages, activeAgent);
+      
+      if (!response.content) {
+        throw new Error('Received empty response from AI service');
+      }
+      
       setOutput(response.content);
       
       toast({
         title: "Processing Complete",
         description: `Successfully processed with ${agents.find(a => a.id === activeAgent)?.name}`,
       });
+      
+      console.log('AI processing completed successfully');
+      
     } catch (error) {
       console.error('AI Processing Error:', error);
-      setOutput(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setOutput(`❌ Error: ${errorMessage}\n\nPlease check your AI configuration and try again.`);
       
       toast({
         title: "Processing Failed",
-        description: "Failed to process request. Please check your AI configuration.",
+        description: errorMessage,
         variant: "destructive",
       });
+
+      // If it's a configuration issue, suggest opening config
+      if (errorMessage.includes('configured') || errorMessage.includes('API key')) {
+        setTimeout(() => {
+          toast({
+            title: "Configuration Needed",
+            description: "Click the AI Config button to update your settings.",
+          });
+        }, 2000);
+      }
     } finally {
       setIsProcessing(false);
     }
   };
+
+  // Check if AI is configured on component mount
+  React.useEffect(() => {
+    if (!aiService.isConfigured()) {
+      console.log('AI service not configured, showing setup reminder');
+      setTimeout(() => {
+        toast({
+          title: "Setup Required",
+          description: "Please configure your AI settings to start using the coding assistant.",
+        });
+      }, 1000);
+    }
+  }, [toast]);
 
   const renderActiveAgent = () => {
     const commonProps = { input, setOutput, isProcessing, setIsProcessing };
@@ -206,10 +249,10 @@ const Index = () => {
               variant="outline" 
               size="sm" 
               onClick={() => setShowAIConfig(true)}
-              className="bg-white"
+              className={`bg-white ${!aiService.isConfigured() ? 'border-red-300 text-red-600' : ''}`}
             >
               <Settings className="h-4 w-4 mr-2" />
-              AI Config
+              AI Config {!aiService.isConfigured() && '⚠️'}
             </Button>
           </div>
         </div>
@@ -269,7 +312,7 @@ const Index = () => {
               <Button 
                 onClick={handleProcess} 
                 className="w-full" 
-                disabled={!input.trim() || isProcessing}
+                disabled={!input.trim() || isProcessing || !aiService.isConfigured()}
               >
                 {isProcessing ? (
                   <>
@@ -283,6 +326,11 @@ const Index = () => {
                   </>
                 )}
               </Button>
+              {!aiService.isConfigured() && (
+                <p className="text-sm text-red-600 text-center">
+                  ⚠️ Please configure AI settings first
+                </p>
+              )}
             </CardContent>
           </Card>
 
