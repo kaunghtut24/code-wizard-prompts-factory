@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Settings, Key, Globe, Brain, Save, TestTube, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Settings, Key, Globe, Brain, Save, TestTube, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiService } from '@/services/aiService';
 
@@ -19,7 +19,8 @@ interface AIConfigurationProps {
 const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) => {
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('https://api.openai.com/v1');
-  const [selectedModel, setSelectedModel] = useState('gpt-4');
+  const [selectedModel, setSelectedModel] = useState('');
+  const [customModel, setCustomModel] = useState('');
   const [provider, setProvider] = useState('openai');
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -27,34 +28,39 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
   const { toast } = useToast();
 
   const providers = [
-    { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
-    { id: 'anthropic', name: 'Anthropic (Claude)', baseUrl: 'https://api.anthropic.com' },
-    { id: 'gemini', name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1' },
-    { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1' },
-    { id: 'together', name: 'Together AI', baseUrl: 'https://api.together.xyz/v1' },
-    { id: 'custom', name: 'Custom Provider', baseUrl: '' }
+    { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4' },
+    { id: 'anthropic', name: 'Anthropic (Claude)', baseUrl: 'https://api.anthropic.com', defaultModel: 'claude-3-5-sonnet-20241022' },
+    { id: 'gemini', name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1', defaultModel: 'gemini-pro' },
+    { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', defaultModel: 'llama2-70b-4096' },
+    { id: 'together', name: 'Together AI', baseUrl: 'https://api.together.xyz/v1', defaultModel: 'meta-llama/Llama-2-70b-chat-hf' },
+    { id: 'custom', name: 'Custom Provider', baseUrl: '', defaultModel: 'custom-model' }
   ];
 
-  const models = {
+  const popularModels = {
     openai: [
-      'gpt-4-turbo-preview',
+      'gpt-4o',
+      'gpt-4-turbo',
       'gpt-4',
       'gpt-3.5-turbo',
       'gpt-3.5-turbo-16k'
     ],
     anthropic: [
+      'claude-3-5-sonnet-20241022',
       'claude-3-opus-20240229',
       'claude-3-sonnet-20240229',
       'claude-3-haiku-20240307'
     ],
     gemini: [
       'gemini-pro',
-      'gemini-pro-vision'
+      'gemini-pro-vision',
+      'gemini-1.5-pro',
+      'gemini-1.5-flash'
     ],
     groq: [
       'llama2-70b-4096',
       'mixtral-8x7b-32768',
-      'gemma-7b-it'
+      'gemma-7b-it',
+      'llama-3.1-70b-versatile'
     ],
     together: [
       'meta-llama/Llama-2-70b-chat-hf',
@@ -73,22 +79,37 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
         setProvider(config.provider || 'openai');
         setApiKey(config.apiKey || '');
         setBaseUrl(config.baseUrl || 'https://api.openai.com/v1');
-        setSelectedModel(config.model || 'gpt-4');
+        setSelectedModel(config.model || '');
+        setCustomModel(config.model || '');
       } catch (error) {
         console.error('Failed to load stored config:', error);
       }
     }
   }, [isOpen]);
 
+  const getCurrentProvider = () => providers.find(p => p.id === provider);
+
   const handleProviderChange = (newProvider: string) => {
     setProvider(newProvider);
     const providerConfig = providers.find(p => p.id === newProvider);
-    if (providerConfig && providerConfig.baseUrl) {
-      setBaseUrl(providerConfig.baseUrl);
+    if (providerConfig) {
+      if (providerConfig.baseUrl) {
+        setBaseUrl(providerConfig.baseUrl);
+      }
+      setSelectedModel(providerConfig.defaultModel);
+      setCustomModel(providerConfig.defaultModel);
     }
-    setSelectedModel('');
     setConnectionStatus('idle');
     setConnectionError('');
+  };
+
+  const handleModelSelection = (model: string) => {
+    setSelectedModel(model);
+    setCustomModel(model);
+  };
+
+  const getEffectiveModel = () => {
+    return customModel.trim() || selectedModel || getCurrentProvider()?.defaultModel || 'gpt-4';
   };
 
   const handleSaveConfiguration = async () => {
@@ -99,9 +120,12 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
       if (!apiKey.trim()) {
         throw new Error('API Key is required');
       }
-      if (!selectedModel.trim()) {
+      
+      const effectiveModel = getEffectiveModel();
+      if (!effectiveModel) {
         throw new Error('Model selection is required');
       }
+      
       if (!baseUrl.trim()) {
         throw new Error('Base URL is required');
       }
@@ -110,7 +134,7 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
         provider,
         apiKey: apiKey.trim(),
         baseUrl: baseUrl.trim(),
-        model: selectedModel.trim(),
+        model: effectiveModel,
         timestamp: new Date().toISOString()
       };
       
@@ -118,7 +142,7 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
       
       toast({
         title: "Configuration Saved",
-        description: `Successfully configured ${providers.find(p => p.id === provider)?.name} with model ${selectedModel}`,
+        description: `Successfully configured ${getCurrentProvider()?.name} with model ${effectiveModel}`,
       });
       
       setConnectionStatus('success');
@@ -147,9 +171,12 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
       if (!apiKey.trim()) {
         throw new Error('API Key is required for testing');
       }
-      if (!selectedModel.trim()) {
+      
+      const effectiveModel = getEffectiveModel();
+      if (!effectiveModel) {
         throw new Error('Model selection is required for testing');
       }
+      
       if (!baseUrl.trim()) {
         throw new Error('Base URL is required for testing');
       }
@@ -159,7 +186,7 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
         provider,
         apiKey: apiKey.trim(),
         baseUrl: baseUrl.trim(),
-        model: selectedModel.trim()
+        model: effectiveModel
       };
       
       aiService.updateConfig(testConfig);
@@ -197,6 +224,8 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
   };
 
   if (!isOpen) return null;
+
+  const effectiveModel = getEffectiveModel();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -288,27 +317,53 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
           </div>
 
           {/* Model Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="model" className="flex items-center gap-2">
+          <div className="space-y-4">
+            <Label className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
-              Model
+              Model Configuration
             </Label>
-            <Select value={selectedModel} onValueChange={(value) => {
-              setSelectedModel(value);
-              setConnectionStatus('idle');
-              setConnectionError('');
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {models[provider as keyof typeof models]?.map((model) => (
-                  <SelectItem key={model} value={model}>
-                    {model}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            
+            {/* Popular Models Quick Select */}
+            {popularModels[provider as keyof typeof popularModels]?.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Popular Models (Quick Select)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {popularModels[provider as keyof typeof popularModels].map((model) => (
+                    <Button
+                      key={model}
+                      variant={selectedModel === model ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleModelSelection(model)}
+                      className="text-xs"
+                    >
+                      {model}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Custom Model Input */}
+            <div className="space-y-2">
+              <Label htmlFor="customModel" className="text-sm">Custom Model Name</Label>
+              <Input
+                id="customModel"
+                placeholder={`Enter model name (default: ${getCurrentProvider()?.defaultModel})`}
+                value={customModel}
+                onChange={(e) => {
+                  setCustomModel(e.target.value);
+                  setConnectionStatus('idle');
+                  setConnectionError('');
+                }}
+              />
+              <div className="flex items-start gap-2 p-2 bg-blue-50 rounded border">
+                <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-blue-700">
+                  <p><strong>Current effective model:</strong> {effectiveModel}</p>
+                  <p className="mt-1">You can enter any model name here, including future models. The system will use the default model as fallback if the specified model is not available.</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Status */}
@@ -316,8 +371,8 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
             <Badge variant={apiKey ? "default" : "secondary"}>
               {apiKey ? "API Key Set" : "No API Key"}
             </Badge>
-            <Badge variant={selectedModel ? "default" : "secondary"}>
-              {selectedModel ? "Model Selected" : "No Model"}
+            <Badge variant={effectiveModel ? "default" : "secondary"}>
+              {effectiveModel ? `Model: ${effectiveModel}` : "No Model"}
             </Badge>
             <Badge variant={baseUrl ? "default" : "secondary"}>
               {baseUrl ? "URL Configured" : "No Base URL"}
@@ -335,7 +390,7 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
             <Button 
               onClick={handleTestConnection} 
               variant="outline" 
-              disabled={!apiKey || !selectedModel || !baseUrl || isConnecting}
+              disabled={!apiKey || !effectiveModel || !baseUrl || isConnecting}
               className="flex-1"
             >
               <TestTube className="h-4 w-4 mr-2" />
@@ -343,7 +398,7 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
             </Button>
             <Button 
               onClick={handleSaveConfiguration} 
-              disabled={!apiKey || !selectedModel || !baseUrl || isConnecting}
+              disabled={!apiKey || !effectiveModel || !baseUrl || isConnecting}
               className="flex-1"
             >
               <Save className="h-4 w-4 mr-2" />

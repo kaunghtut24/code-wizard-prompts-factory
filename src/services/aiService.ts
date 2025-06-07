@@ -21,6 +21,16 @@ interface AIResponse {
   };
 }
 
+// Default models for each provider as fallback
+const DEFAULT_MODELS = {
+  openai: 'gpt-4',
+  anthropic: 'claude-3-5-sonnet-20241022',
+  gemini: 'gemini-pro',
+  groq: 'llama2-70b-4096',
+  together: 'meta-llama/Llama-2-70b-chat-hf',
+  custom: 'custom-model'
+};
+
 class AIService {
   private config: AIConfig | null = null;
 
@@ -46,6 +56,26 @@ class AIService {
     }
   }
 
+  private getDefaultModel(provider: string): string {
+    return DEFAULT_MODELS[provider as keyof typeof DEFAULT_MODELS] || DEFAULT_MODELS.openai;
+  }
+
+  private getEffectiveModel(): string {
+    if (!this.config) {
+      return DEFAULT_MODELS.openai;
+    }
+
+    // Use configured model, or fallback to provider default
+    const configuredModel = this.config.model?.trim();
+    if (configuredModel) {
+      return configuredModel;
+    }
+
+    const defaultModel = this.getDefaultModel(this.config.provider);
+    console.log(`Using default model for provider ${this.config.provider}: ${defaultModel}`);
+    return defaultModel;
+  }
+
   public updateConfig(config: AIConfig): void {
     console.log('Updating AI config:', { 
       provider: config.provider, 
@@ -54,10 +84,17 @@ class AIService {
       baseUrl: config.baseUrl 
     });
     
-    this.config = config;
+    // Ensure model fallback
+    const effectiveModel = config.model?.trim() || this.getDefaultModel(config.provider);
+    
+    this.config = {
+      ...config,
+      model: effectiveModel
+    };
+
     try {
-      localStorage.setItem('ai_config', JSON.stringify(config));
-      console.log('AI config saved successfully');
+      localStorage.setItem('ai_config', JSON.stringify(this.config));
+      console.log('AI config saved successfully with effective model:', effectiveModel);
     } catch (error) {
       console.error('Failed to save AI config to localStorage:', error);
       throw new Error('Failed to save configuration');
@@ -67,7 +104,6 @@ class AIService {
   public isConfigured(): boolean {
     const configured = this.config !== null && 
            this.config.apiKey !== '' && 
-           this.config.model !== '' &&
            this.config.baseUrl !== '';
     
     console.log('AI Service configured:', configured);
@@ -75,7 +111,7 @@ class AIService {
       console.log('Missing config:', {
         hasConfig: !!this.config,
         hasApiKey: !!this.config?.apiKey,
-        hasModel: !!this.config?.model,
+        hasModel: !!this.getEffectiveModel(),
         hasBaseUrl: !!this.config?.baseUrl
       });
     }
@@ -89,7 +125,7 @@ class AIService {
     }
 
     try {
-      console.log('Testing AI connection...');
+      console.log('Testing AI connection with model:', this.getEffectiveModel());
       const testMessages: ChatMessage[] = [
         { role: 'user', content: 'Hello, this is a connection test. Please respond with "Connection successful".' }
       ];
@@ -116,9 +152,10 @@ class AIService {
       throw new Error('AI service not configured. Please set up your API key and model.');
     }
 
+    const effectiveModel = this.getEffectiveModel();
     console.log('Starting AI chat request:', {
       provider: this.config.provider,
-      model: this.config.model,
+      model: effectiveModel,
       agentType,
       messageCount: messages.length
     });
@@ -145,13 +182,14 @@ class AIService {
         headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
 
-    const body = this.formatRequestBody(messages, agentType);
-    const url = this.buildUrl();
+    const body = this.formatRequestBody(messages, agentType, effectiveModel);
+    const url = this.buildUrl(effectiveModel);
 
     console.log('AI request details:', {
       url,
       headers: Object.keys(headers),
-      bodyKeys: Object.keys(body)
+      bodyKeys: Object.keys(body),
+      effectiveModel
     });
 
     try {
@@ -183,6 +221,32 @@ class AIService {
             break;
           case 404:
             errorMessage = 'API endpoint not found. Please check your base URL configuration.';
+            break;
+          case 422:
+            // Try with default model if custom model fails
+            if (this.config.model !== this.getDefaultModel(this.config.provider)) {
+              console.log('Custom model failed, attempting with default model...');
+              const defaultModel = this.getDefaultModel(this.config.provider);
+              const fallbackBody = this.formatRequestBody(messages, agentType, defaultModel);
+              const fallbackUrl = this.buildUrl(defaultModel);
+              
+              try {
+                const fallbackResponse = await fetch(fallbackUrl, {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify(fallbackBody),
+                });
+                
+                if (fallbackResponse.ok) {
+                  const fallbackData = await fallbackResponse.json();
+                  console.log('Fallback to default model successful');
+                  return this.parseResponse(fallbackData);
+                }
+              } catch (fallbackError) {
+                console.error('Fallback attempt also failed:', fallbackError);
+              }
+            }
+            errorMessage = `Model "${effectiveModel}" not available. Please check if the model name is correct or try a different model.`;
             break;
           case 429:
             errorMessage = 'Rate limit exceeded. Please try again later.';
@@ -216,19 +280,22 @@ class AIService {
     }
   }
 
-  private formatRequestBody(messages: ChatMessage[], agentType?: string): any {
+  private formatRequestBody(messages: ChatMessage[], agentType?: string, model?: string): any {
     const systemPrompt = this.getSystemPrompt(agentType);
     const fullMessages = systemPrompt 
       ? [{ role: 'system', content: systemPrompt }, ...messages]
       : messages;
 
+    const effectiveModel = model || this.getEffectiveModel();
+
     console.log('Formatting request for provider:', this.config!.provider);
     console.log('Using system prompt for agent:', agentType, 'Length:', systemPrompt?.length || 0);
+    console.log('Using model:', effectiveModel);
 
     switch (this.config!.provider) {
       case 'anthropic':
         return {
-          model: this.config!.model,
+          model: effectiveModel,
           max_tokens: 4000,
           messages: fullMessages,
         };
@@ -241,7 +308,7 @@ class AIService {
         };
       default:
         return {
-          model: this.config!.model,
+          model: effectiveModel,
           messages: fullMessages,
           max_tokens: 4000,
           temperature: 0.7,
@@ -249,14 +316,15 @@ class AIService {
     }
   }
 
-  private buildUrl(): string {
+  private buildUrl(model?: string): string {
     const { provider, baseUrl, apiKey } = this.config!;
+    const effectiveModel = model || this.getEffectiveModel();
     
-    console.log('Building URL for provider:', provider);
+    console.log('Building URL for provider:', provider, 'with model:', effectiveModel);
     
     switch (provider) {
       case 'gemini':
-        return `${baseUrl}/models/${this.config!.model}:generateContent?key=${apiKey}`;
+        return `${baseUrl}/models/${effectiveModel}:generateContent?key=${apiKey}`;
       case 'anthropic':
         return `${baseUrl}/messages`;
       default:
