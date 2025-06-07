@@ -17,7 +17,8 @@ import {
   Sparkles,
   Zap,
   Brain,
-  Settings
+  Settings,
+  Database
 } from 'lucide-react';
 import AgentOrchestrator from '@/components/AgentOrchestrator';
 import CodeGenerationAgent from '@/components/agents/CodeGenerationAgent';
@@ -28,12 +29,17 @@ import DocumentationAgent from '@/components/agents/DocumentationAgent';
 import GitHubAgent from '@/components/agents/GitHubAgent';
 import SemanticSearchAgent from '@/components/agents/SemanticSearchAgent';
 import MCPAnalysisAgent from '@/components/agents/MCPAnalysisAgent';
+import AIConfiguration from '@/components/AIConfiguration';
+import { aiService } from '@/services/aiService';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [activeAgent, setActiveAgent] = useState('orchestrator');
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showAIConfig, setShowAIConfig] = useState(false);
+  const { toast } = useToast();
 
   const agents = [
     {
@@ -102,11 +108,43 @@ const Index = () => {
   ];
 
   const handleProcess = async () => {
+    if (!aiService.isConfigured()) {
+      toast({
+        title: "AI Not Configured",
+        description: "Please configure your AI model settings first.",
+        variant: "destructive",
+      });
+      setShowAIConfig(true);
+      return;
+    }
+
     setIsProcessing(true);
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setOutput(`Processing with ${agents.find(a => a.id === activeAgent)?.name}...\n\nInput received: ${input}`);
-    setIsProcessing(false);
+    setOutput('');
+    
+    try {
+      const messages = [
+        { role: 'user' as const, content: input }
+      ];
+      
+      const response = await aiService.chat(messages, activeAgent);
+      setOutput(response.content);
+      
+      toast({
+        title: "Processing Complete",
+        description: `Successfully processed with ${agents.find(a => a.id === activeAgent)?.name}`,
+      });
+    } catch (error) {
+      console.error('AI Processing Error:', error);
+      setOutput(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+      
+      toast({
+        title: "Processing Failed",
+        description: "Failed to process request. Please check your AI configuration.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const renderActiveAgent = () => {
@@ -153,7 +191,7 @@ const Index = () => {
           <p className="text-lg text-muted-foreground mb-4">
             Professional Automatic Coding Assistant Agent System
           </p>
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
             <Badge variant="secondary" className="bg-blue-100 text-blue-700">
               <Zap className="h-3 w-3 mr-1" />
               9 Specialized Agents
@@ -164,6 +202,15 @@ const Index = () => {
             <Badge variant="secondary" className="bg-purple-100 text-purple-700">
               OpenAI Compatible
             </Badge>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowAIConfig(true)}
+              className="bg-white"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              AI Config
+            </Button>
           </div>
         </div>
 
@@ -300,6 +347,12 @@ const Index = () => {
           </div>
         </div>
       </div>
+
+      {/* AI Configuration Modal */}
+      <AIConfiguration 
+        isOpen={showAIConfig} 
+        onClose={() => setShowAIConfig(false)} 
+      />
     </div>
   );
 };
