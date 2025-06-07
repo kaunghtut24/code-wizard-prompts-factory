@@ -1,8 +1,10 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Zap, Target, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Brain, Zap, Target, CheckCircle, Edit } from 'lucide-react';
+import PromptEditor from '@/components/PromptEditor';
+import { promptService } from '@/services/promptService';
 
 interface AgentOrchestratorProps {
   input: string;
@@ -17,6 +19,8 @@ const AgentOrchestrator: React.FC<AgentOrchestratorProps> = ({
   isProcessing, 
   setIsProcessing 
 }) => {
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+
   const analyzeTask = (userInput: string) => {
     const lowercaseInput = userInput.toLowerCase();
     
@@ -68,101 +72,126 @@ const AgentOrchestrator: React.FC<AgentOrchestratorProps> = ({
   const recommendation = getRecommendation();
 
   return (
-    <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Brain className="h-6 w-6 text-purple-600" />
-          Agent Orchestrator
-        </CardTitle>
-        <CardDescription>
-          Intelligent task analysis and agent recommendation system
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* How it works */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-            <Target className="h-8 w-8 text-blue-500" />
-            <div>
-              <h4 className="font-semibold text-sm">Analyze</h4>
-              <p className="text-xs text-muted-foreground">Parse user intent</p>
+    <>
+      <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Brain className="h-6 w-6 text-purple-600" />
+              <CardTitle>Agent Orchestrator</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant={promptService.hasCustomPrompt('orchestrator') ? "default" : "secondary"} className="text-xs">
+                {promptService.hasCustomPrompt('orchestrator') ? "Custom" : "Default"}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPromptEditor(true)}
+                className="flex items-center gap-1"
+              >
+                <Edit className="h-3 w-3" />
+                Edit Prompt
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-            <Zap className="h-8 w-8 text-yellow-500" />
-            <div>
-              <h4 className="font-semibold text-sm">Route</h4>
-              <p className="text-xs text-muted-foreground">Select best agent</p>
+          <CardDescription>
+            Intelligent task analysis and agent recommendation system
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* How it works */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
+              <Target className="h-8 w-8 text-blue-500" />
+              <div>
+                <h4 className="font-semibold text-sm">Analyze</h4>
+                <p className="text-xs text-muted-foreground">Parse user intent</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
+              <Zap className="h-8 w-8 text-yellow-500" />
+              <div>
+                <h4 className="font-semibold text-sm">Route</h4>
+                <p className="text-xs text-muted-foreground">Select best agent</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
+              <CheckCircle className="h-8 w-8 text-green-500" />
+              <div>
+                <h4 className="font-semibold text-sm">Execute</h4>
+                <p className="text-xs text-muted-foreground">Deliver results</p>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-            <CheckCircle className="h-8 w-8 text-green-500" />
-            <div>
-              <h4 className="font-semibold text-sm">Execute</h4>
-              <p className="text-xs text-muted-foreground">Deliver results</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Task Analysis */}
-        {input && (
-          <div className="bg-white p-4 rounded-lg border">
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              Task Analysis
-            </h4>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Input Type:</span>
-                <Badge variant="outline">
-                  {input.includes('```') ? 'Code Snippet' : 'Natural Language'}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Complexity:</span>
-                <Badge variant="outline">
-                  {input.length > 200 ? 'High' : input.length > 50 ? 'Medium' : 'Low'}
-                </Badge>
-              </div>
-              {recommendation && (
+          {/* Task Analysis */}
+          {input && (
+            <div className="bg-white p-4 rounded-lg border">
+              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                Task Analysis
+              </h4>
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Recommended Agent:</span>
-                  <Badge className="bg-purple-100 text-purple-700">
-                    {recommendation.name}
+                  <span className="text-sm font-medium">Input Type:</span>
+                  <Badge variant="outline">
+                    {input.includes('```') ? 'Code Snippet' : 'Natural Language'}
                   </Badge>
                 </div>
-              )}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Complexity:</span>
+                  <Badge variant="outline">
+                    {input.length > 200 ? 'High' : input.length > 50 ? 'Medium' : 'Low'}
+                  </Badge>
+                </div>
+                {recommendation && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Recommended Agent:</span>
+                    <Badge className="bg-purple-100 text-purple-700">
+                      {recommendation.name}
+                    </Badge>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* System Prompt Template */}
-        <div className="bg-gray-50 p-4 rounded-lg border">
-          <h4 className="font-semibold mb-2">System Prompt Template</h4>
-          <div className="text-xs font-mono bg-white p-3 rounded border overflow-x-auto">
-            <div className="text-green-600"># Agent Orchestrator System Prompt</div>
-            <div className="mt-2">
-              <div className="text-blue-600">Role:</div>
-              <div>You are an intelligent Agent Orchestrator that analyzes user requests and routes them to the most appropriate specialized coding agent.</div>
-              <br />
-              <div className="text-blue-600">Context:</div>
-              <div>The user has submitted a coding-related task that needs to be processed by one of 8 specialized agents.</div>
-              <br />
-              <div className="text-blue-600">Instructions:</div>
-              <div>1. Analyze the user's input for keywords, intent, and complexity</div>
-              <div>2. Determine which specialized agent is best suited for the task</div>
-              <div>3. Route the request with appropriate context and formatting</div>
-              <div>4. Ensure the selected agent receives all necessary information</div>
-              <br />
-              <div className="text-blue-600">Output format:</div>
-              <div>- Selected agent name and reasoning</div>
-              <div>- Formatted request for the target agent</div>
-              <div>- Any additional context or constraints</div>
+          {/* System Prompt Template */}
+          <div className="bg-gray-50 p-4 rounded-lg border">
+            <h4 className="font-semibold mb-2">System Prompt Template</h4>
+            <div className="text-xs font-mono bg-white p-3 rounded border overflow-x-auto">
+              <div className="text-green-600"># Agent Orchestrator System Prompt</div>
+              <div className="mt-2">
+                <div className="text-blue-600">Role:</div>
+                <div>You are an intelligent Agent Orchestrator that analyzes user requests and routes them to the most appropriate specialized coding agent.</div>
+                <br />
+                <div className="text-blue-600">Context:</div>
+                <div>The user has submitted a coding-related task that needs to be processed by one of 8 specialized agents.</div>
+                <br />
+                <div className="text-blue-600">Instructions:</div>
+                <div>1. Analyze the user's input for keywords, intent, and complexity</div>
+                <div>2. Determine which specialized agent is best suited for the task</div>
+                <div>3. Route the request with appropriate context and formatting</div>
+                <div>4. Ensure the selected agent receives all necessary information</div>
+                <br />
+                <div className="text-blue-600">Output format:</div>
+                <div>- Selected agent name and reasoning</div>
+                <div>- Formatted request for the target agent</div>
+                <div>- Any additional context or constraints</div>
+              </div>
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <PromptEditor
+        isOpen={showPromptEditor}
+        onClose={() => setShowPromptEditor(false)}
+        agentType="orchestrator"
+        agentName="Agent Orchestrator"
+      />
+    </>
   );
 };
 
