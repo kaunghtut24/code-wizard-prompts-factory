@@ -1,42 +1,6 @@
 
 {
-  "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "npm run build:production",
-    "watchPatterns": [
-      "**/*.ts",
-      "**/*.tsx", 
-      "**/*.js",
-      "**/*.jsx",
-      "**/*.json"
-    ]
-  },
   "deploy": {
-    "startCommand": "npm run start:production",
-    "healthcheckPath": "/health",
-    "healthcheckTimeout": 300,
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
-  },
-  "environments": {
-    "production": {
-      "variables": {
-        "NODE_ENV": "production",
-        "VITE_APP_ENV": "production",
-        "BUILD_ENV": "production"
-      }
-    }
-  },
-  "networking": {
-    "serviceDomains": [
-      {
-        "domain": "${{RAILWAY_STATIC_URL}}"
-      }
-    ]
-  },
-  "regions": ["us-west1"],
-  "runtime": {
-    "memory": 512,
-    "cpu": 0.25
+    "type": "dockerfile"
   }
 }
