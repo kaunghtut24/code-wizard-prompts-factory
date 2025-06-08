@@ -20,7 +20,9 @@ import {
   Database,
   History,
   Globe,
-  MessageSquare
+  MessageSquare,
+  Copy,
+  Check
 } from 'lucide-react';
 import AgentOrchestrator from '@/components/AgentOrchestrator';
 import CodeGenerationAgent from '@/components/agents/CodeGenerationAgent';
@@ -48,6 +50,7 @@ const Index = () => {
   const [showAIConfig, setShowAIConfig] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showSearchSettings, setShowSearchSettings] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [conversationMessages, setConversationMessages] = useState<Array<{
     content: string;
     isUser: boolean;
@@ -123,6 +126,26 @@ const Index = () => {
     }
   ];
 
+  const handleCopyOutput = async () => {
+    if (!output) return;
+    
+    try {
+      await navigator.clipboard.writeText(output);
+      setCopied(true);
+      toast({
+        title: "Output Copied",
+        description: "Output has been copied to clipboard",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy output to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleProcess = async () => {
     if (!aiService.isConfigured()) {
       toast({
@@ -157,8 +180,8 @@ const Index = () => {
     try {
       console.log('Starting AI processing with agent:', activeAgent);
       
-      let messages = [
-        { role: 'user' as const, content: input.trim() }
+      let messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
+        { role: 'user', content: input.trim() }
       ];
       
       let searchResults: any[] = [];
@@ -177,10 +200,10 @@ const Index = () => {
           const searchContext = searchService.formatSearchResults(searchResponse);
           messages = [
             { 
-              role: 'system' as const, 
+              role: 'system', 
               content: `You have access to the following web search results. Use them to provide more accurate and up-to-date information:\n\n${searchContext}` 
             },
-            { role: 'user' as const, content: input.trim() }
+            { role: 'user', content: input.trim() }
           ];
           
           console.log('Web search completed, results integrated into prompt');
@@ -467,13 +490,29 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              {/* Output Section */}
+              {/* Output Section with Copy Button */}
               <Card className="h-fit">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Bot className="h-5 w-5" />
-                    Output
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-5 w-5" />
+                      <CardTitle>Output</CardTitle>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyOutput}
+                      disabled={!output}
+                      className="flex items-center gap-1"
+                    >
+                      {copied ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </Button>
+                  </div>
                   <CardDescription>
                     Agent response and generated code
                   </CardDescription>
