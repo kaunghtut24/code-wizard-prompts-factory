@@ -1,0 +1,24 @@
+
+[variables]
+NODE_ENV = "production"
+VITE_APP_ENV = "production"
+
+[phases.setup]
+nixPkgs = ["nodejs_18", "npm"]
+
+[phases.install]
+cmds = [
+  "npm ci --include=dev"
+]
+
+[phases.build]
+cmds = [
+  "chmod +x scripts/pre-deploy.sh",
+  "./scripts/pre-deploy.sh"
+]
+
+[phases.start]
+cmd = "npm run preview -- --host 0.0.0.0 --port $PORT"
+
+[staticAssets]
+outputDir = "dist"
