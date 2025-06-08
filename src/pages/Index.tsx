@@ -40,6 +40,7 @@ import EnhancedMessageDisplay from '@/components/EnhancedMessageDisplay';
 import { aiService } from '@/services/aiService';
 import { searchService } from '@/services/searchService';
 import { databaseService } from '@/services/databaseService';
+import { promptService } from '@/services/promptService';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
@@ -255,8 +256,7 @@ const Index = () => {
         metadata: {
           hasCodeSnippets: response.content.includes('```'),
           searchResults: searchResults.length > 0 ? searchResults : undefined,
-          processingTime: Date.now() - userMessage.timestamp,
-          conversationLength: conversationMessages.length + 2
+          processingTime: Date.now() - userMessage.timestamp
         }
       });
       
