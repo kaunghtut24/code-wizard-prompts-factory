@@ -4,17 +4,12 @@ NODE_ENV = "production"
 VITE_APP_ENV = "production"
 
 [phases.setup]
-nixPkgs = ["nodejs_18", "npm"]
+nixPkgs = ["nodejs_18", "nodejs_18.npm", "vite"]
 
 [phases.install]
 cmds = [
-  "npm ci --include=dev"
-]
-
-[phases.build]
-cmds = [
-  "chmod +x scripts/pre-deploy.sh",
-  "./scripts/pre-deploy.sh"
+  "npm ci --include=dev",
+  "npm run build"
 ]
 
 [phases.start]
