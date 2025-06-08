@@ -293,8 +293,7 @@ CONTEXT AWARENESS:
         metadata: {
           hasCodeSnippets: response.content.includes('```'),
           searchResults: searchResults.length > 0 ? searchResults : undefined,
-          processingTime: Date.now() - userMessage.timestamp,
-          searchUrls: searchUrls.length > 0 ? searchUrls : undefined
+          processingTime: Date.now() - userMessage.timestamp
         }
       });
       

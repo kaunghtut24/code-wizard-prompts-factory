@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -180,8 +179,7 @@ Remember to be contextually aware of the entire conversation flow.`;
         metadata: {
           hasCodeSnippets: response.content.includes('```'),
           searchResults: searchResults.length > 0 ? searchResults : undefined,
-          processingTime: Date.now() - userMessage.timestamp,
-          isInteractiveChat: true
+          processingTime: Date.now() - userMessage.timestamp
         }
       });
 
