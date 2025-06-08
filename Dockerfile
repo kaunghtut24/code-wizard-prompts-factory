@@ -15,4 +15,4 @@ COPY . .
 
 RUN bun run build:production
 
-CMD [ "bun", "run", "preview", "--", "--host", "0.0.0.0", "--port", "$PORT" ]
+CMD [ "bun", "run", "preview" ]
