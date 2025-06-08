@@ -180,9 +180,24 @@ const Index = () => {
     try {
       console.log('Starting AI processing with agent:', activeAgent);
       
-      let messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
-        { role: 'user', content: input.trim() }
-      ];
+      // Build conversation context for interactive chat
+      let messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
+      
+      // Add system prompt with conversation capabilities
+      const systemPrompt = promptService.getPrompt(activeAgent);
+      messages.push({ role: 'system', content: systemPrompt });
+      
+      // Add conversation history for context (last 6 messages)
+      const recentMessages = conversationMessages.slice(-6);
+      recentMessages.forEach(msg => {
+        messages.push({
+          role: msg.isUser ? 'user' : 'assistant',
+          content: msg.content
+        });
+      });
+      
+      // Add current user input
+      messages.push({ role: 'user', content: input.trim() });
       
       let searchResults: any[] = [];
       let searchQuery = '';
@@ -196,20 +211,21 @@ const Index = () => {
           searchResults = searchResponse.results;
           searchQuery = searchResponse.query;
           
-          // Prepend search results to the AI prompt
+          // Prepend search results to the conversation
           const searchContext = searchService.formatSearchResults(searchResponse);
-          messages = [
-            { 
-              role: 'system', 
-              content: `You have access to the following web search results. Use them to provide more accurate and up-to-date information:\n\n${searchContext}` 
-            },
-            { role: 'user', content: input.trim() }
-          ];
+          messages.splice(1, 0, { 
+            role: 'system', 
+            content: `CURRENT WEB SEARCH RESULTS:\n\n${searchContext}\n\nUse this information to provide more accurate and up-to-date responses. Reference the search results when relevant.` 
+          });
           
-          console.log('Web search completed, results integrated into prompt');
+          console.log('Web search completed, results integrated into conversation context');
         } catch (searchError) {
           console.error('Web search failed:', searchError);
-          // Continue without search results
+          toast({
+            title: "Search Failed",
+            description: "Web search encountered an error but continuing without search results.",
+            variant: "destructive",
+          });
         }
       }
       
@@ -239,7 +255,8 @@ const Index = () => {
         metadata: {
           hasCodeSnippets: response.content.includes('```'),
           searchResults: searchResults.length > 0 ? searchResults : undefined,
-          processingTime: Date.now() - userMessage.timestamp
+          processingTime: Date.now() - userMessage.timestamp,
+          conversationLength: conversationMessages.length + 2
         }
       });
       
@@ -247,6 +264,9 @@ const Index = () => {
         title: "Processing Complete",
         description: `Successfully processed with ${agents.find(a => a.id === activeAgent)?.name}`,
       });
+      
+      // Clear input for next message in conversation
+      setInput('');
       
       console.log('AI processing completed successfully');
       
