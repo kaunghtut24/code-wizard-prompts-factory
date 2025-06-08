@@ -4,7 +4,7 @@ NODE_ENV = "production"
 VITE_APP_ENV = "production"
 
 [phases.setup]
-nixPkgs = ["nodejs_18"]
+nixPkgs = ["pkgs.nodejs_18", "pkgs.nodejs_18.npm", "pkgs.vite"]
 
 [phases.install]
 cmds = [
