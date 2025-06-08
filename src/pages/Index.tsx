@@ -17,7 +17,10 @@ import {
   Zap,
   Brain,
   Settings,
-  Database
+  Database,
+  History,
+  Globe,
+  MessageSquare
 } from 'lucide-react';
 import AgentOrchestrator from '@/components/AgentOrchestrator';
 import CodeGenerationAgent from '@/components/agents/CodeGenerationAgent';
@@ -29,7 +32,12 @@ import GitHubAgent from '@/components/agents/GitHubAgent';
 import SemanticSearchAgent from '@/components/agents/SemanticSearchAgent';
 import MCPAnalysisAgent from '@/components/agents/MCPAnalysisAgent';
 import AIConfiguration from '@/components/AIConfiguration';
+import ConversationHistory from '@/components/ConversationHistory';
+import SearchSettings from '@/components/SearchSettings';
+import EnhancedMessageDisplay from '@/components/EnhancedMessageDisplay';
 import { aiService } from '@/services/aiService';
+import { searchService } from '@/services/searchService';
+import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
@@ -38,6 +46,15 @@ const Index = () => {
   const [output, setOutput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAIConfig, setShowAIConfig] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showSearchSettings, setShowSearchSettings] = useState(false);
+  const [conversationMessages, setConversationMessages] = useState<Array<{
+    content: string;
+    isUser: boolean;
+    agentType?: string;
+    timestamp: number;
+    searchResults?: any[];
+  }>>([]);
   const { toast } = useToast();
 
   const agents = [
@@ -127,14 +144,51 @@ const Index = () => {
     }
 
     setIsProcessing(true);
+    const userMessage = {
+      content: input.trim(),
+      isUser: true,
+      timestamp: Date.now()
+    };
+    
+    // Add user message to conversation
+    setConversationMessages(prev => [...prev, userMessage]);
     setOutput('Processing your request...');
     
     try {
       console.log('Starting AI processing with agent:', activeAgent);
       
-      const messages = [
+      let messages = [
         { role: 'user' as const, content: input.trim() }
       ];
+      
+      let searchResults: any[] = [];
+      let searchQuery = '';
+      
+      // Check if web search is enabled and needed
+      const isSearchEnabled = databaseService.getUserPreference('search_enabled', true);
+      if (isSearchEnabled && searchService.isConfigured() && searchService.shouldSearchForQuery(input)) {
+        try {
+          console.log('Performing web search for query:', input);
+          const searchResponse = await searchService.search(input, { maxResults: 5 });
+          searchResults = searchResponse.results;
+          searchQuery = searchResponse.query;
+          
+          // Prepend search results to the AI prompt
+          const searchContext = searchService.formatSearchResults(searchResponse);
+          messages = [
+            { 
+              role: 'system' as const, 
+              content: `You have access to the following web search results. Use them to provide more accurate and up-to-date information:\n\n${searchContext}` 
+            },
+            { role: 'user' as const, content: input.trim() }
+          ];
+          
+          console.log('Web search completed, results integrated into prompt');
+        } catch (searchError) {
+          console.error('Web search failed:', searchError);
+          // Continue without search results
+        }
+      }
       
       const response = await aiService.chat(messages, activeAgent);
       
@@ -142,7 +196,29 @@ const Index = () => {
         throw new Error('Received empty response from AI service');
       }
       
+      const aiMessage = {
+        content: response.content,
+        isUser: false,
+        agentType: activeAgent,
+        timestamp: Date.now(),
+        searchResults: searchResults.length > 0 ? searchResults : undefined
+      };
+      
+      // Add AI response to conversation
+      setConversationMessages(prev => [...prev, aiMessage]);
       setOutput(response.content);
+      
+      // Save conversation to database
+      databaseService.saveConversation({
+        userInput: input.trim(),
+        agentType: activeAgent,
+        aiOutput: response.content,
+        metadata: {
+          hasCodeSnippets: response.content.includes('```'),
+          searchResults: searchResults.length > 0 ? searchResults : undefined,
+          processingTime: Date.now() - userMessage.timestamp
+        }
+      });
       
       toast({
         title: "Processing Complete",
@@ -155,7 +231,17 @@ const Index = () => {
       console.error('AI Processing Error:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setOutput(`❌ Error: ${errorMessage}\n\nPlease check your AI configuration and try again.`);
+      const errorOutput = `❌ Error: ${errorMessage}\n\nPlease check your AI configuration and try again.`;
+      
+      const errorAiMessage = {
+        content: errorOutput,
+        isUser: false,
+        agentType: activeAgent,
+        timestamp: Date.now()
+      };
+      
+      setConversationMessages(prev => [...prev, errorAiMessage]);
+      setOutput(errorOutput);
       
       toast({
         title: "Processing Failed",
@@ -175,6 +261,12 @@ const Index = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const clearConversation = () => {
+    setConversationMessages([]);
+    setOutput('');
+    setInput('');
   };
 
   // Check if AI is configured on component mount
@@ -254,6 +346,24 @@ const Index = () => {
               <Settings className="h-4 w-4 mr-2" />
               AI Config {!aiService.isConfigured() && '⚠️'}
             </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowHistory(true)}
+              className="bg-white"
+            >
+              <History className="h-4 w-4 mr-2" />
+              History
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowSearchSettings(true)}
+              className={`bg-white ${!searchService.isConfigured() ? 'border-orange-300 text-orange-600' : ''}`}
+            >
+              <Globe className="h-4 w-4 mr-2" />
+              Web Search {!searchService.isConfigured() && '⚠️'}
+            </Button>
           </div>
         </div>
 
@@ -289,69 +399,141 @@ const Index = () => {
           })}
         </div>
 
-        {/* Main Interface */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Input Section */}
-          <Card className="h-fit">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5" />
-                Input
-              </CardTitle>
-              <CardDescription>
-                Describe your coding task or paste your code
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Textarea
-                placeholder="Enter your request, code snippet, or question here..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="min-h-[200px] font-mono text-sm"
-              />
-              <Button 
-                onClick={handleProcess} 
-                className="w-full" 
-                disabled={!input.trim() || isProcessing || !aiService.isConfigured()}
-              >
-                {isProcessing ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Process with {agents.find(a => a.id === activeAgent)?.name}
-                  </>
-                )}
-              </Button>
-              {!aiService.isConfigured() && (
-                <p className="text-sm text-red-600 text-center">
-                  ⚠️ Please configure AI settings first
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        {/* Main Interface with Tabs */}
+        <Tabs defaultValue="chat" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="chat" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Chat Interface
+            </TabsTrigger>
+            <TabsTrigger value="conversation" className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Conversation View
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Output Section */}
-          <Card className="h-fit">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bot className="h-5 w-5" />
-                Output
-              </CardTitle>
-              <CardDescription>
-                Agent response and generated code
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-gray-50 rounded-lg p-4 min-h-[200px] font-mono text-sm whitespace-pre-wrap">
-                {output || 'Output will appear here...'}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value="chat" className="space-y-6">
+            {/* Original Interface */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Input Section */}
+              <Card className="h-fit">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Code className="h-5 w-5" />
+                    Input
+                  </CardTitle>
+                  <CardDescription>
+                    Describe your coding task or paste your code
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    placeholder="Enter your request, code snippet, or question here..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    className="min-h-[200px] font-mono text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleProcess} 
+                      className="flex-1" 
+                      disabled={!input.trim() || isProcessing || !aiService.isConfigured()}
+                    >
+                      {isProcessing ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Process with {agents.find(a => a.id === activeAgent)?.name}
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      onClick={clearConversation} 
+                      variant="outline"
+                      disabled={conversationMessages.length === 0}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  {!aiService.isConfigured() && (
+                    <p className="text-sm text-red-600 text-center">
+                      ⚠️ Please configure AI settings first
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Output Section */}
+              <Card className="h-fit">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bot className="h-5 w-5" />
+                    Output
+                  </CardTitle>
+                  <CardDescription>
+                    Agent response and generated code
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-gray-50 rounded-lg p-4 min-h-[200px] font-mono text-sm whitespace-pre-wrap">
+                    {output || 'Output will appear here...'}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="conversation" className="space-y-6">
+            {/* Enhanced Conversation View */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    <CardTitle>Conversation</CardTitle>
+                  </div>
+                  <Button 
+                    onClick={clearConversation} 
+                    variant="outline" 
+                    size="sm"
+                    disabled={conversationMessages.length === 0}
+                  >
+                    Clear Conversation
+                  </Button>
+                </div>
+                <CardDescription>
+                  Enhanced view with code highlighting and search integration
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                  {conversationMessages.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-12">
+                      <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg mb-2">Start a conversation</p>
+                      <p className="text-sm">Switch to the Chat Interface tab to begin</p>
+                    </div>
+                  ) : (
+                    conversationMessages.map((message, index) => (
+                      <EnhancedMessageDisplay
+                        key={index}
+                        content={message.content}
+                        isUser={message.isUser}
+                        agentType={message.agentType}
+                        timestamp={message.timestamp}
+                        hasSearchResults={!!message.searchResults}
+                      />
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Active Agent Component */}
         <div className="mt-8">
@@ -361,7 +543,7 @@ const Index = () => {
         {/* Features Section */}
         <div className="mt-12 text-center">
           <h2 className="text-2xl font-bold mb-6">Agent Capabilities</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">🧠 Intelligent Routing</CardTitle>
@@ -374,11 +556,21 @@ const Index = () => {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">⚡ Multi-Framework</CardTitle>
+                <CardTitle className="text-lg">💾 Persistent Memory</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Compatible with CrewAI, LangGraph, and custom agent flows
+                  Stores conversations and learns from your interactions
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">🌐 Web Search</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Integrates real-time web search for up-to-date information
                 </p>
               </CardContent>
             </Card>
@@ -396,10 +588,21 @@ const Index = () => {
         </div>
       </div>
 
-      {/* AI Configuration Modal */}
+      {/* Modals */}
       <AIConfiguration 
         isOpen={showAIConfig} 
         onClose={() => setShowAIConfig(false)} 
+      />
+      
+      <ConversationHistory
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        currentAgent={activeAgent}
+      />
+      
+      <SearchSettings
+        isOpen={showSearchSettings}
+        onClose={() => setShowSearchSettings(false)}
       />
     </div>
   );
