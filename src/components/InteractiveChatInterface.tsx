@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -147,7 +146,7 @@ You are now in interactive chat mode. This means:
 
 Remember to be contextually aware of the entire conversation flow and any attached files.`;
 
-      chatMessages.push({ role: 'system', content: interactiveSystemPrompt });
+      chatMessages.push({ role: 'system', content: interactiveSystemPromPrompt });
 
       // Add conversation history for context (last 10 messages)
       const recentMessages = messages.slice(-10);
@@ -216,8 +215,7 @@ Remember to be contextually aware of the entire conversation flow and any attach
         metadata: {
           hasCodeSnippets: response.content.includes('```'),
           searchResults: searchResults.length > 0 ? searchResults : undefined,
-          processingTime: Date.now() - userMessage.timestamp,
-          hasAttachedFiles: userMessage.attachedFiles ? userMessage.attachedFiles.length > 0 : false
+          processingTime: Date.now() - userMessage.timestamp
         }
       });
 
