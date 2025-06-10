@@ -198,7 +198,7 @@ const ConnectivityChecker: React.FC = () => {
         updateServiceStatus(3, {
           status: 'online',
           message: 'Database working',
-          details: `${stats.totalEntries} entries stored, ${(stats.sizeInBytes / 1024).toFixed(1)}KB used`
+          details: `${stats.conversationCount + stats.searchResultCount} entries stored, ${stats.totalSizeKB.toFixed(1)}KB used`
         });
         console.log('Local database test: OK, stats:', stats);
       } else {
