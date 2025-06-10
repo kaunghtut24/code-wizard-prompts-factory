@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,15 @@ import { databaseService } from '@/services/databaseService';
 import { promptService } from '@/services/promptService';
 import { useToast } from '@/hooks/use-toast';
 import EnhancedMessageDisplay from './EnhancedMessageDisplay';
+import FileAttachment from './FileAttachment';
+
+interface AttachedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  content: string;
+}
 
 interface InteractiveChatMessage {
   id: string;
@@ -29,6 +39,7 @@ interface InteractiveChatMessage {
   agentType?: string;
   searchResults?: any[];
   searchUrls?: string[];
+  attachedFiles?: AttachedFile[];
 }
 
 interface InteractiveChatInterfaceProps {
@@ -43,6 +54,7 @@ const InteractiveChatInterface: React.FC<InteractiveChatInterfaceProps> = ({
   const [messages, setMessages] = useState<InteractiveChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -68,8 +80,22 @@ const InteractiveChatInterface: React.FC<InteractiveChatInterfaceProps> = ({
     return content + urlSection;
   };
 
+  const formatAttachedFilesForAI = (files: AttachedFile[]): string => {
+    if (!files || files.length === 0) return '';
+    
+    let filesContext = '\n\n**ATTACHED FILES:**\n';
+    files.forEach((file, index) => {
+      filesContext += `\n**File ${index + 1}: ${file.name}**\n`;
+      filesContext += `Type: ${file.type}\n`;
+      filesContext += `Content:\n${file.content}\n`;
+      filesContext += '---\n';
+    });
+    
+    return filesContext;
+  };
+
   const handleSendMessage = async () => {
-    if (!input.trim() || isProcessing) return;
+    if ((!input.trim() && attachedFiles.length === 0) || isProcessing) return;
 
     if (!aiService.isConfigured()) {
       toast({
@@ -80,15 +106,23 @@ const InteractiveChatInterface: React.FC<InteractiveChatInterfaceProps> = ({
       return;
     }
 
+    // Prepare user message content with files
+    let userMessageContent = input.trim();
+    if (attachedFiles.length > 0) {
+      userMessageContent += formatAttachedFilesForAI(attachedFiles);
+    }
+
     const userMessage: InteractiveChatMessage = {
       id: Date.now().toString(),
-      content: input.trim(),
+      content: userMessageContent,
       isUser: true,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      attachedFiles: attachedFiles.length > 0 ? [...attachedFiles] : undefined
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setAttachedFiles([]);
     setIsProcessing(true);
 
     try {
@@ -97,18 +131,21 @@ const InteractiveChatInterface: React.FC<InteractiveChatInterfaceProps> = ({
       
       // Enhanced system prompt for interactive chat
       const baseSystemPrompt = promptService.getPrompt(activeAgent);
-      const interactiveSystemPrompt = `${baseSystemPrompt}
+      const interactiveSystemPromPrompt = `${baseSystemPrompt}
 
-INTERACTIVE CHAT MODE:
+INTERACTIVE CHAT MODE WITH FILE SUPPORT:
 You are now in interactive chat mode. This means:
 - Maintain context from the entire conversation history
 - Provide conversational responses that reference previous messages when relevant
 - Be helpful, clear, and engaging in your responses
 - If you use web search results, reference them naturally in your response
+- When files are attached, analyze their content and incorporate relevant information into your response
+- For code files, provide specific feedback, suggestions, or explanations
+- For documentation files, reference the content when answering questions
 - Keep responses focused but comprehensive
 - Feel free to ask clarifying questions if needed
 
-Remember to be contextually aware of the entire conversation flow.`;
+Remember to be contextually aware of the entire conversation flow and any attached files.`;
 
       chatMessages.push({ role: 'system', content: interactiveSystemPrompt });
 
@@ -123,7 +160,7 @@ Remember to be contextually aware of the entire conversation flow.`;
       });
 
       // Add current user input
-      chatMessages.push({ role: 'user', content: input.trim() });
+      chatMessages.push({ role: 'user', content: userMessageContent });
 
       let searchResults: any[] = [];
       let searchUrls: string[] = [];
@@ -179,7 +216,8 @@ Remember to be contextually aware of the entire conversation flow.`;
         metadata: {
           hasCodeSnippets: response.content.includes('```'),
           searchResults: searchResults.length > 0 ? searchResults : undefined,
-          processingTime: Date.now() - userMessage.timestamp
+          processingTime: Date.now() - userMessage.timestamp,
+          hasAttachedFiles: userMessage.attachedFiles ? userMessage.attachedFiles.length > 0 : false
         }
       });
 
@@ -214,6 +252,7 @@ Remember to be contextually aware of the entire conversation flow.`;
 
   const clearChat = () => {
     setMessages([]);
+    setAttachedFiles([]);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -224,7 +263,7 @@ Remember to be contextually aware of the entire conversation flow.`;
   };
 
   return (
-    <Card className="h-[600px] flex flex-col">
+    <Card className="h-[700px] flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -254,65 +293,34 @@ Remember to be contextually aware of the entire conversation flow.`;
       <CardContent className="flex-1 flex flex-col space-y-4">
         {/* Messages Area */}
         <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-4">
+          <div className="space-y-6">
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-12">
                 <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
                 <p className="text-lg mb-2">Start a conversation</p>
-                <p className="text-sm">Ask me anything! I'll remember our conversation context.</p>
+                <p className="text-sm">Ask me anything! I'll remember our conversation context and can analyze your attached files.</p>
               </div>
             ) : (
               messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex items-start gap-3 ${
-                    message.isUser ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  {!message.isUser && (
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                        <Bot className="h-4 w-4 text-blue-600" />
-                      </div>
-                    </div>
-                  )}
+                <div key={message.id}>
+                  <EnhancedMessageDisplay
+                    content={message.isUser ? input.trim() || 'File(s) attached' : message.content}
+                    isUser={message.isUser}
+                    agentType={message.agentType}
+                    timestamp={message.timestamp}
+                    hasSearchResults={!!message.searchResults}
+                    compact={false}
+                  />
                   
-                  <div
-                    className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                      message.isUser
-                        ? 'bg-blue-600 text-white ml-auto'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
-                  >
-                    <div className="text-sm whitespace-pre-wrap">
-                      {message.isUser ? (
-                        message.content
-                      ) : (
-                        <EnhancedMessageDisplay
-                          content={message.content}
-                          isUser={false}
-                          agentType={message.agentType}
-                          timestamp={message.timestamp}
-                          hasSearchResults={!!message.searchResults}
-                          compact={true}
-                        />
-                      )}
-                    </div>
-                    
-                    {message.searchUrls && message.searchUrls.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-gray-200">
-                        <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
-                          <Globe className="h-3 w-3" />
-                          Web Search Used
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {message.isUser && (
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                        <User className="h-4 w-4 text-gray-600" />
+                  {message.attachedFiles && message.attachedFiles.length > 0 && (
+                    <div className="mt-2 ml-16">
+                      <div className="text-xs text-gray-600 mb-1">Attached files:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {message.attachedFiles.map((file) => (
+                          <Badge key={file.id} variant="outline" className="text-xs">
+                            {file.name}
+                          </Badge>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -323,20 +331,34 @@ Remember to be contextually aware of the entire conversation flow.`;
           </div>
         </ScrollArea>
 
+        {/* File Attachment Area */}
+        {(attachedFiles.length > 0 || !isProcessing) && (
+          <div className="border-t pt-3">
+            <FileAttachment
+              onFilesChange={setAttachedFiles}
+              maxFiles={3}
+              maxSizePerFile={10}
+            />
+          </div>
+        )}
+
         {/* Input Area */}
-        <div className="flex items-center gap-2 pt-3 border-t">
-          <Input
-            placeholder="Type your message... (Press Enter to send)"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={isProcessing}
-            className="flex-1"
-          />
+        <div className="flex items-end gap-2 pt-3 border-t">
+          <div className="flex-1">
+            <Input
+              placeholder="Type your message... (Press Enter to send)"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              disabled={isProcessing}
+              className="resize-none"
+            />
+          </div>
           <Button
             onClick={handleSendMessage}
-            disabled={!input.trim() || isProcessing || !aiService.isConfigured()}
+            disabled={(!input.trim() && attachedFiles.length === 0) || isProcessing || !aiService.isConfigured()}
             size="sm"
+            className="flex-shrink-0"
           >
             {isProcessing ? (
               <RefreshCw className="h-4 w-4 animate-spin" />

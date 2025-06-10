@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from "@/lib/utils";
+import CodeDisplay from './CodeDisplay';
 
 interface EnhancedMessageDisplayProps {
   content: string;
@@ -83,57 +84,91 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
     }
   };
 
-  const processContent = (text: string): string => {
-    // Replace triple backticks with a pre and code tag
-    let processedText = text.replace(/```([\s\S]*?)```/g, (match, code) => {
-      const trimmedCode = code.trim();
-      const languageMatch = trimmedCode.match(/^([a-zA-Z]+)\n([\s\S]*)$/);
-      
-      if (languageMatch) {
-        const language = languageMatch[1];
-        const codeContent = languageMatch[2].trim();
-        return `<pre><code class="language-${language}">${escapeHtml(codeContent)}</code></pre>`;
-      } else {
-        return `<pre><code>${escapeHtml(trimmedCode)}</code></pre>`;
+  const parseContentWithCodeBlocks = (text: string) => {
+    const parts = [];
+    const codeBlockRegex = /```([\w]*)\n?([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+      // Add text before code block
+      if (match.index > lastIndex) {
+        const textContent = text.slice(lastIndex, match.index);
+        if (textContent.trim()) {
+          parts.push({
+            type: 'text',
+            content: textContent
+          });
+        }
       }
-    });
-  
+
+      // Add code block
+      parts.push({
+        type: 'code',
+        language: match[1] || 'javascript',
+        content: match[2].trim()
+      });
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      const textContent = text.slice(lastIndex);
+      if (textContent.trim()) {
+        parts.push({
+          type: 'text',
+          content: textContent
+        });
+      }
+    }
+
+    return parts.length > 0 ? parts : [{ type: 'text', content: text }];
+  };
+
+  const processTextContent = (text: string): string => {
     // Handle single backticks for inline code
-    processedText = processedText.replace(/`([^`]+)`/g, '<code>$1</code>');
-  
+    let processedText = text.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
+    
     // Convert newlines to <br> tags
     processedText = processedText.replace(/\n/g, '<br>');
-  
+    
     return processedText;
-  };
-  
-  const escapeHtml = (text: string): string => {
-    const map: Record<string, string> = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
   };
 
   if (compact) {
+    const contentParts = parseContentWithCodeBlocks(content);
+    
     return (
-      <div className="w-full">
-        <div 
-          className="prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: processContent(content) }}
-        />
+      <div className="w-full space-y-3">
+        {contentParts.map((part, index) => (
+          <div key={index}>
+            {part.type === 'code' ? (
+              <CodeDisplay
+                content={part.content}
+                language={part.language}
+                showLineNumbers={true}
+                maxHeight="300px"
+              />
+            ) : (
+              <div 
+                className="prose prose-sm max-w-none text-gray-800"
+                dangerouslySetInnerHTML={{ __html: processTextContent(part.content) }}
+              />
+            )}
+          </div>
+        ))}
       </div>
     );
   }
 
+  const contentParts = parseContentWithCodeBlocks(content);
+
   return (
-    <div className={`rounded-lg p-4 border ${
+    <div className={`rounded-lg p-4 border shadow-sm ${
       isUser 
         ? 'bg-blue-50 border-blue-200 ml-12' 
-        : 'bg-gray-50 border-gray-200 mr-12'
+        : 'bg-white border-gray-200 mr-12'
     }`}>
       <div className="flex items-center gap-2 mb-3">
         {isUser ? (
@@ -167,10 +202,23 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
       )}
 
       <div className="space-y-3">
-        <div 
-          className="prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: processContent(content) }}
-        />
+        {contentParts.map((part, index) => (
+          <div key={index}>
+            {part.type === 'code' ? (
+              <CodeDisplay
+                content={part.content}
+                language={part.language}
+                showLineNumbers={true}
+                maxHeight="400px"
+              />
+            ) : (
+              <div 
+                className="prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: processTextContent(part.content) }}
+              />
+            )}
+          </div>
+        ))}
         
         {!isUser && (
           <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
