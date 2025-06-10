@@ -18,7 +18,7 @@ interface SearchResponse {
 class SearchService {
   private apiKey: string | null = null;
   private readonly proxyUrl = 'https://api.allorigins.win/get?url=';
-  private readonly requestTimeout = 10000; // 10 seconds
+  private readonly requestTimeout = 10000;
 
   constructor() {
     this.loadApiKey();
@@ -42,15 +42,18 @@ class SearchService {
   private async fetchWithTimeout(url: string, timeoutMs: number = this.requestTimeout): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    
+
+    const headers: HeadersInit = { 'Accept': 'application/json' };
+    if (!url.includes('allorigins')) {
+      headers['Cache-Control'] = 'no-cache';
+    }
+
     try {
       const response = await fetch(url, {
         signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
+        headers
       });
+
       clearTimeout(timeoutId);
       return response;
     } catch (error) {
@@ -71,7 +74,6 @@ class SearchService {
 
     console.log('Starting web search:', { query, useCache, maxResults });
 
-    // Check cache first if enabled
     if (useCache) {
       const cachedResult = databaseService.getRecentSearchResult(query, 30);
       if (cachedResult) {
@@ -90,27 +92,22 @@ class SearchService {
     }
 
     try {
-      // Try direct SerpApi call first
       const result = await this.performSerpApiSearch(query, maxResults, location);
-      
-      // Save to cache
       databaseService.saveSearchResult(query, result.results);
       console.log('Web search completed:', { resultCount: result.results.length });
-      
       return result;
-
     } catch (error) {
       console.error('Primary search failed:', error);
-      
-      // If it's a timeout or proxy error, try fallback
-      if (error instanceof Error && 
-          (error.message.includes('timeout') || 
-           error.message.includes('408') || 
-           error.message.includes('Proxy error'))) {
+
+      if (error instanceof Error && (
+        error.message.includes('timeout') ||
+        error.message.includes('408') ||
+        error.message.includes('Proxy error')
+      )) {
         console.log('Attempting fallback search due to timeout...');
         return this.fallbackSearch(query, maxResults);
       }
-      
+
       throw error;
     }
   }
@@ -121,30 +118,27 @@ class SearchService {
       q: query,
       api_key: this.apiKey!,
       num: maxResults.toString(),
-      location: location,
+      location,
       hl: 'en',
       gl: 'us'
     });
 
     const targetUrl = `https://serpapi.com/search.json?${params}`;
-    
-    // Try multiple proxy services for better reliability
+
     const proxyUrls = [
       `${this.proxyUrl}${encodeURIComponent(targetUrl)}`,
-      `https://cors-anywhere.herokuapp.com/${targetUrl}`,
-      // Fallback to direct call (will likely fail due to CORS but worth trying)
-      targetUrl
+      targetUrl // direct (likely to fail CORS but try anyway)
     ];
 
     let lastError: Error | null = null;
 
     for (const proxyUrl of proxyUrls) {
       try {
-        console.log('Attempting search with URL:', proxyUrl.includes('cors-anywhere') ? 'cors-anywhere proxy' : 
-                   proxyUrl.includes('allorigins') ? 'allorigins proxy' : 'direct');
-        
-        const response = await this.fetchWithTimeout(proxyUrl, 8000); // Shorter timeout per attempt
-        
+        console.log('Attempting search with URL:',
+          proxyUrl.includes('allorigins') ? 'allorigins proxy' : 'direct');
+
+        const response = await this.fetchWithTimeout(proxyUrl, 8000);
+
         if (!response.ok) {
           if (response.status === 408) {
             throw new Error('Request timeout - server took too long to respond');
@@ -162,7 +156,7 @@ class SearchService {
         } else {
           data = await response.json();
         }
-        
+
         if (data.error) {
           if (data.error.includes('Invalid API key')) {
             throw new Error('Invalid SerpApi key. Please check your API key configuration.');
@@ -190,31 +184,29 @@ class SearchService {
       } catch (error) {
         lastError = error as Error;
         console.log(`Proxy attempt failed: ${lastError.message}`);
-        continue; // Try next proxy
+        continue;
       }
     }
 
-    // If all proxies failed, throw the last error
     throw lastError || new Error('All search attempts failed');
   }
 
   private async fallbackSearch(query: string, maxResults: number): Promise<SearchResponse> {
     console.log('Using fallback search method...');
-    
+
     try {
       const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
       const response = await this.fetchWithTimeout(`${this.proxyUrl}${encodeURIComponent(ddgUrl)}`, 5000);
-      
+
       if (!response.ok) {
         throw new Error(`Fallback search failed: ${response.status}`);
       }
-      
+
       const proxyData = await response.json();
       const data = JSON.parse(proxyData.contents);
-      
+
       const results: SearchResult[] = [];
-      
-      // Add instant answer if available
+
       if (data.Abstract && data.AbstractText) {
         results.push({
           title: data.Heading || 'Instant Answer',
@@ -223,8 +215,7 @@ class SearchService {
           position: 1
         });
       }
-      
-      // Add related topics
+
       if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
         data.RelatedTopics.slice(0, maxResults - 1).forEach((topic: any, index: number) => {
           if (topic.Text && topic.FirstURL) {
@@ -239,7 +230,7 @@ class SearchService {
       }
 
       console.log('Fallback search completed:', { resultCount: results.length });
-      
+
       return {
         results: results.slice(0, maxResults),
         query,
@@ -249,8 +240,7 @@ class SearchService {
 
     } catch (fallbackError) {
       console.error('Fallback search failed:', fallbackError);
-      
-      // Return helpful error message
+
       return {
         results: [{
           title: 'Search Service Unavailable',
@@ -301,7 +291,7 @@ class SearchService {
   } {
     const searches = databaseService.getSearchResults();
     const recent = searches.filter(s => s.timestamp > Date.now() - (24 * 60 * 60 * 1000));
-    
+
     return {
       totalSearches: searches.length,
       recentSearches: recent.length,
