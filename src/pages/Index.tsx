@@ -41,6 +41,7 @@ import ConversationHistory from '@/components/ConversationHistory';
 import SearchSettings from '@/components/SearchSettings';
 import EnhancedMessageDisplay from '@/components/EnhancedMessageDisplay';
 import InteractiveChatInterface from '@/components/InteractiveChatInterface';
+import ConnectivityChecker from '@/components/ConnectivityChecker';
 import { aiService } from '@/services/aiService';
 import { searchService } from '@/services/searchService';
 import { databaseService } from '@/services/databaseService';
@@ -520,7 +521,7 @@ CONTEXT AWARENESS:
           />
         ) : (
           <Tabs defaultValue="chat" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="chat" className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
                 Chat Interface
@@ -528,6 +529,10 @@ CONTEXT AWARENESS:
               <TabsTrigger value="conversation" className="flex items-center gap-2">
                 <History className="h-4 w-4" />
                 Conversation View
+              </TabsTrigger>
+              <TabsTrigger value="connectivity" className="flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                System Status
               </TabsTrigger>
             </TabsList>
 
@@ -667,6 +672,11 @@ CONTEXT AWARENESS:
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="connectivity" className="space-y-6">
+              {/* Connectivity Checker */}
+              <ConnectivityChecker />
             </TabsContent>
           </Tabs>
         )}
