@@ -1,4 +1,3 @@
-
 import { databaseService } from './databaseService';
 
 interface SearchResult {
@@ -19,6 +18,7 @@ interface SearchResponse {
 class SearchService {
   private apiKey: string | null = null;
   private readonly proxyUrl = 'https://api.allorigins.win/get?url=';
+  private readonly requestTimeout = 10000; // 10 seconds
 
   constructor() {
     this.loadApiKey();
@@ -37,6 +37,29 @@ class SearchService {
 
   public isConfigured(): boolean {
     return !!this.apiKey;
+  }
+
+  private async fetchWithTimeout(url: string, timeoutMs: number = this.requestTimeout): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout - please try again');
+      }
+      throw error;
+    }
   }
 
   public async search(query: string, options: {
@@ -67,69 +90,24 @@ class SearchService {
     }
 
     try {
-      // Use a CORS proxy to avoid browser CORS issues
-      const params = new URLSearchParams({
-        engine: 'google',
-        q: query,
-        api_key: this.apiKey!,
-        num: maxResults.toString(),
-        location: location,
-        hl: 'en',
-        gl: 'us'
-      });
-
-      const targetUrl = `https://serpapi.com/search.json?${params}`;
-      const proxyedUrl = `${this.proxyUrl}${encodeURIComponent(targetUrl)}`;
-
-      const response = await fetch(proxyedUrl);
+      // Try direct SerpApi call first
+      const result = await this.performSerpApiSearch(query, maxResults, location);
       
-      if (!response.ok) {
-        throw new Error(`Proxy error: ${response.status} ${response.statusText}`);
-      }
-
-      const proxyData = await response.json();
-      
-      if (!proxyData.contents) {
-        throw new Error('No data received from proxy');
-      }
-
-      const data = JSON.parse(proxyData.contents);
-      
-      if (data.error) {
-        if (data.error.includes('Invalid API key')) {
-          throw new Error('Invalid SerpApi key. Please check your API key configuration.');
-        }
-        throw new Error(`Search API error: ${data.error}`);
-      }
-
-      const results: SearchResult[] = (data.organic_results || [])
-        .slice(0, maxResults)
-        .map((result: any, index: number) => ({
-          title: result.title || '',
-          link: result.link || '',
-          snippet: result.snippet || '',
-          position: result.position || index + 1,
-          date: result.date || undefined
-        }));
-
       // Save to cache
-      databaseService.saveSearchResult(query, results);
-
-      console.log('Web search completed:', { resultCount: results.length });
-
-      return {
-        results,
-        query,
-        timestamp: Date.now(),
-        cached: false
-      };
+      databaseService.saveSearchResult(query, result.results);
+      console.log('Web search completed:', { resultCount: result.results.length });
+      
+      return result;
 
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('Primary search failed:', error);
       
-      // Fallback: try alternative search approach
-      if (error instanceof Error && error.message.includes('proxy')) {
-        console.log('Trying alternative search method...');
+      // If it's a timeout or proxy error, try fallback
+      if (error instanceof Error && 
+          (error.message.includes('timeout') || 
+           error.message.includes('408') || 
+           error.message.includes('Proxy error'))) {
+        console.log('Attempting fallback search due to timeout...');
         return this.fallbackSearch(query, maxResults);
       }
       
@@ -137,13 +115,100 @@ class SearchService {
     }
   }
 
+  private async performSerpApiSearch(query: string, maxResults: number, location: string): Promise<SearchResponse> {
+    const params = new URLSearchParams({
+      engine: 'google',
+      q: query,
+      api_key: this.apiKey!,
+      num: maxResults.toString(),
+      location: location,
+      hl: 'en',
+      gl: 'us'
+    });
+
+    const targetUrl = `https://serpapi.com/search.json?${params}`;
+    
+    // Try multiple proxy services for better reliability
+    const proxyUrls = [
+      `${this.proxyUrl}${encodeURIComponent(targetUrl)}`,
+      `https://cors-anywhere.herokuapp.com/${targetUrl}`,
+      // Fallback to direct call (will likely fail due to CORS but worth trying)
+      targetUrl
+    ];
+
+    let lastError: Error | null = null;
+
+    for (const proxyUrl of proxyUrls) {
+      try {
+        console.log('Attempting search with URL:', proxyUrl.includes('cors-anywhere') ? 'cors-anywhere proxy' : 
+                   proxyUrl.includes('allorigins') ? 'allorigins proxy' : 'direct');
+        
+        const response = await this.fetchWithTimeout(proxyUrl, 8000); // Shorter timeout per attempt
+        
+        if (!response.ok) {
+          if (response.status === 408) {
+            throw new Error('Request timeout - server took too long to respond');
+          }
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        let data;
+        if (proxyUrl.includes('allorigins')) {
+          const proxyData = await response.json();
+          if (!proxyData.contents) {
+            throw new Error('No data received from proxy');
+          }
+          data = JSON.parse(proxyData.contents);
+        } else {
+          data = await response.json();
+        }
+        
+        if (data.error) {
+          if (data.error.includes('Invalid API key')) {
+            throw new Error('Invalid SerpApi key. Please check your API key configuration.');
+          }
+          throw new Error(`Search API error: ${data.error}`);
+        }
+
+        const results: SearchResult[] = (data.organic_results || [])
+          .slice(0, maxResults)
+          .map((result: any, index: number) => ({
+            title: result.title || '',
+            link: result.link || '',
+            snippet: result.snippet || '',
+            position: result.position || index + 1,
+            date: result.date || undefined
+          }));
+
+        return {
+          results,
+          query,
+          timestamp: Date.now(),
+          cached: false
+        };
+
+      } catch (error) {
+        lastError = error as Error;
+        console.log(`Proxy attempt failed: ${lastError.message}`);
+        continue; // Try next proxy
+      }
+    }
+
+    // If all proxies failed, throw the last error
+    throw lastError || new Error('All search attempts failed');
+  }
+
   private async fallbackSearch(query: string, maxResults: number): Promise<SearchResponse> {
-    // Simple fallback using DuckDuckGo instant answer API (no key required)
+    console.log('Using fallback search method...');
+    
     try {
       const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
-      const proxyedUrl = `${this.proxyUrl}${encodeURIComponent(ddgUrl)}`;
+      const response = await this.fetchWithTimeout(`${this.proxyUrl}${encodeURIComponent(ddgUrl)}`, 5000);
       
-      const response = await fetch(proxyedUrl);
+      if (!response.ok) {
+        throw new Error(`Fallback search failed: ${response.status}`);
+      }
+      
       const proxyData = await response.json();
       const data = JSON.parse(proxyData.contents);
       
@@ -185,12 +250,12 @@ class SearchService {
     } catch (fallbackError) {
       console.error('Fallback search failed:', fallbackError);
       
-      // Return empty results with explanation
+      // Return helpful error message
       return {
         results: [{
-          title: 'Search Unavailable',
+          title: 'Search Service Unavailable',
           link: '#',
-          snippet: 'Web search is currently unavailable. Please check your API configuration or try again later.',
+          snippet: 'Web search is temporarily unavailable due to network issues. Please check your internet connection and API configuration, then try again later.',
           position: 1
         }],
         query,
