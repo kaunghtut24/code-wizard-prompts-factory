@@ -222,7 +222,7 @@ const InteractiveChatInterface: React.FC<InteractiveChatInterfaceProps> = ({
           aiOutput: finalOutput || 'Collaborative workflow completed',
           metadata: {
             workflowType: 'collaborative',
-            agentsUsed: taskAnalysis.agents,
+            collaborativeAgents: taskAnalysis.agents,
             complexity: taskAnalysis.complexity,
             processingTime: Date.now() - userMessage.timestamp
           }
