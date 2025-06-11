@@ -2,12 +2,15 @@ interface ConversationEntry {
   id: string;
   timestamp: number;
   userInput: string;
-  agentType: string;
   aiOutput: string;
+  agentType: string;
   metadata?: {
     hasCodeSnippets?: boolean;
     searchResults?: any[];
     processingTime?: number;
+    workflowType?: string;
+    collaborativeAgents?: string[];
+    workflowSteps?: any[];
   };
 }
 
