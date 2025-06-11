@@ -24,14 +24,23 @@ class SearchService {
     this.loadApiKey();
   }
 
-  private loadApiKey(): void {
-    this.apiKey = databaseService.getUserPreference('serpapi_key', null);
-    console.log('SerpApi key loaded:', !!this.apiKey);
+  private async loadApiKey(): Promise<void> {
+    try {
+      this.apiKey = await databaseService.getUserSetting('serpapi_key', null);
+      console.log('SerpApi key loaded:', !!this.apiKey);
+    } catch (error) {
+      console.error('Failed to load API key:', error);
+      this.apiKey = null;
+    }
   }
 
-  public setApiKey(apiKey: string): void {
+  public getApiKey(): string | null {
+    return this.apiKey;
+  }
+
+  public async setApiKey(apiKey: string): Promise<void> {
     this.apiKey = apiKey;
-    databaseService.setUserPreference('serpapi_key', apiKey);
+    await databaseService.setUserSetting('serpapi_key', apiKey);
     console.log('SerpApi key updated');
   }
 
@@ -75,13 +84,13 @@ class SearchService {
     console.log('Starting web search:', { query, useCache, maxResults });
 
     if (useCache) {
-      const cachedResult = databaseService.getRecentSearchResult(query, 30);
+      const cachedResult = await databaseService.getCachedSearch(query);
       if (cachedResult) {
         console.log('Using cached search result');
         return {
-          results: cachedResult.results.slice(0, maxResults),
+          results: cachedResult.slice(0, maxResults),
           query,
-          timestamp: cachedResult.timestamp,
+          timestamp: Date.now(),
           cached: true
         };
       }
@@ -93,7 +102,7 @@ class SearchService {
 
     try {
       const result = await this.performSerpApiSearch(query, maxResults, location);
-      databaseService.saveSearchResult(query, result.results);
+      await databaseService.setCachedSearch(query, result.results);
       console.log('Web search completed:', { resultCount: result.results.length });
       return result;
     } catch (error) {
@@ -284,19 +293,28 @@ class SearchService {
     return formatted;
   }
 
-  public getSearchStats(): {
+  public async getSearchStats(): Promise<{
     totalSearches: number;
     recentSearches: number;
     cacheHitRate: number;
-  } {
-    const searches = databaseService.getSearchResults();
-    const recent = searches.filter(s => s.timestamp > Date.now() - (24 * 60 * 60 * 1000));
+  }> {
+    try {
+      const searches = await databaseService.getSearchResults();
+      const recent = searches.filter(s => s.timestamp > Date.now() - (24 * 60 * 60 * 1000));
 
-    return {
-      totalSearches: searches.length,
-      recentSearches: recent.length,
-      cacheHitRate: searches.length > 0 ? (recent.length / searches.length) * 100 : 0
-    };
+      return {
+        totalSearches: searches.length,
+        recentSearches: recent.length,
+        cacheHitRate: searches.length > 0 ? (recent.length / searches.length) * 100 : 0
+      };
+    } catch (error) {
+      console.error('Failed to get search stats:', error);
+      return {
+        totalSearches: 0,
+        recentSearches: 0,
+        cacheHitRate: 0
+      };
+    }
   }
 }
 

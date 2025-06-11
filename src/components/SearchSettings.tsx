@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Check, X, AlertCircle, Key, Zap } from 'lucide-react';
+import { Globe, Check, X, AlertCircle, Key, Zap, RefreshCw } from 'lucide-react';
 import { searchService } from '@/services/searchService';
 import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
@@ -85,7 +86,7 @@ const SearchSettings: React.FC<SearchSettingsProps> = ({ isOpen, onClose }) => {
       
       // Configure search service
       if (tavilyApiKey.trim()) {
-        searchService.configure(tavilyApiKey.trim());
+        await searchService.setApiKey(tavilyApiKey.trim());
       }
       
       toast({

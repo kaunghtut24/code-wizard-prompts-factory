@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   Bot, 
   Code, 
@@ -27,8 +28,7 @@ import {
   ToggleLeft,
   ToggleRight,
   LogOut,
-  X,
-  Label
+  X
 } from 'lucide-react';
 import AgentOrchestrator from '@/components/AgentOrchestrator';
 import CodeGenerationAgent from '@/components/agents/CodeGenerationAgent';
@@ -62,6 +62,7 @@ const Index = () => {
   const [showAIConfig, setShowAIConfig] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showSearchSettings, setShowSearchSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isInteractiveMode, setIsInteractiveMode] = useState(false);
   const [conversationMessages, setConversationMessages] = useState<Array<{
@@ -240,7 +241,7 @@ CONTEXT AWARENESS:
       let searchQuery = '';
       
       // Check if web search is enabled and needed
-      const isSearchEnabled = databaseService.getUserPreference('search_enabled', true);
+      const isSearchEnabled = await databaseService.getUserSetting('search_enabled', true);
       if (isSearchEnabled && searchService.isConfigured() && searchService.shouldSearchForQuery(input)) {
         try {
           console.log('Performing web search for query:', input);
@@ -294,10 +295,10 @@ CONTEXT AWARENESS:
       setOutput(enhancedContent);
       
       // Save conversation to database
-      databaseService.saveConversation({
-        userInput: input.trim(),
-        agentType: activeAgent,
-        aiOutput: enhancedContent,
+      await databaseService.saveConversation({
+        user_input: input.trim(),
+        agent_type: activeAgent,
+        ai_output: enhancedContent,
         metadata: {
           hasCodeSnippets: response.content.includes('```'),
           searchResults: searchResults.length > 0 ? searchResults : undefined,
@@ -752,11 +753,11 @@ CONTEXT AWARENESS:
                 </TabsList>
                 
                 <TabsContent value="ai" className="mt-6">
-                  <AIConfiguration />
+                  <AIConfiguration isOpen={true} onClose={() => {}} />
                 </TabsContent>
                 
                 <TabsContent value="search" className="mt-6">
-                  <SearchSettings />
+                  <SearchSettings isOpen={true} onClose={() => {}} />
                 </TabsContent>
                 
                 <TabsContent value="database" className="mt-6">

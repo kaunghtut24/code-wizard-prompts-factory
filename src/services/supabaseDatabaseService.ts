@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
@@ -395,13 +394,17 @@ class SupabaseDatabaseService {
     const tables = ['conversations', 'user_settings', 'custom_prompts', 'embeddings', 'search_cache'];
     
     for (const table of tables) {
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq('user_id', userId);
+      try {
+        const { error } = await supabase
+          .from(table as any)
+          .delete()
+          .eq('user_id', userId);
 
-      if (error) {
-        console.error(`Error clearing ${table}:`, error);
+        if (error) {
+          console.error(`Error clearing ${table}:`, error);
+        }
+      } catch (error) {
+        console.error(`Failed to clear ${table}:`, error);
       }
     }
   }

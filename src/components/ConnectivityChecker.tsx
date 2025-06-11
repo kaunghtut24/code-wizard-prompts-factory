@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -194,11 +193,11 @@ const ConnectivityChecker: React.FC = () => {
       
       if (retrieved === testValue) {
         // Test database service
-        const stats = databaseService.getStorageStats();
+        const stats = await databaseService.getStorageStats();
         updateServiceStatus(3, {
           status: 'online',
           message: 'Database working',
-          details: `${stats.conversationCount + stats.searchResultCount} entries stored, ${stats.totalSizeKB.toFixed(1)}KB used`
+          details: `${stats.conversationCount} conversations, ${stats.cacheCount} cache entries stored`
         });
         console.log('Local database test: OK, stats:', stats);
       } else {
@@ -209,7 +208,7 @@ const ConnectivityChecker: React.FC = () => {
       updateServiceStatus(3, {
         status: 'offline',
         message: 'Database unavailable',
-        details: 'localStorage not working'
+        details: 'Database connection failed'
       });
     }
   };
