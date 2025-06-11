@@ -1,3 +1,4 @@
+
 interface ConversationEntry {
   id: string;
   timestamp: number;
@@ -11,6 +12,7 @@ interface ConversationEntry {
     workflowType?: string;
     collaborativeAgents?: string[];
     workflowSteps?: any[];
+    complexity?: string;
   };
 }
 
