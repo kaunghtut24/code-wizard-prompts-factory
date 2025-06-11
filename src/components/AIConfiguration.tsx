@@ -10,6 +10,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Settings, Key, Globe, Brain, Save, TestTube, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiService } from '@/services/aiService';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface AIConfigurationProps {
   isOpen: boolean;
@@ -223,23 +230,22 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
     }
   };
 
-  if (!isOpen) return null;
-
   const effectiveModel = getEffectiveModel();
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <Settings className="h-6 w-6" />
             AI Model Configuration
-          </CardTitle>
-          <CardDescription>
+          </DialogTitle>
+          <DialogDescription>
             Configure your AI provider and model settings for the coding assistant
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
           {/* Connection Status Alert */}
           {connectionStatus === 'error' && connectionError && (
             <Alert variant="destructive">
@@ -408,9 +414,9 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
               Cancel
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
