@@ -52,7 +52,6 @@ import { promptService } from '@/services/promptService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import DatabaseSettings from '@/components/DatabaseSettings';
-import { Label } from '@/components/ui/label';
 
 const Index = () => {
   const [activeAgent, setActiveAgent] = useState('orchestrator');
