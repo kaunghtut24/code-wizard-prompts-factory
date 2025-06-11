@@ -126,7 +126,7 @@ class SupabaseDatabaseService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(this.transformConversation);
   }
 
   async getConversationsByAgent(agentType: string): Promise<ConversationEntry[]> {
@@ -144,7 +144,7 @@ class SupabaseDatabaseService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(this.transformConversation);
   }
 
   async searchConversations(keyword: string): Promise<ConversationEntry[]> {
@@ -162,7 +162,20 @@ class SupabaseDatabaseService {
       throw error;
     }
 
-    return data || [];
+    return (data || []).map(this.transformConversation);
+  }
+
+  private transformConversation(row: any): ConversationEntry {
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      user_input: row.user_input,
+      ai_output: row.ai_output,
+      agent_type: row.agent_type,
+      metadata: typeof row.metadata === 'object' ? row.metadata : {},
+      created_at: row.created_at,
+      updated_at: row.updated_at
+    };
   }
 
   // User settings methods
@@ -220,6 +233,15 @@ class SupabaseDatabaseService {
     });
 
     return settings;
+  }
+
+  // Backward compatibility methods
+  async getUserPreference(key: string, defaultValue: any = null): Promise<any> {
+    return this.getUserSetting(key, defaultValue);
+  }
+
+  async setUserPreference(key: string, value: any): Promise<void> {
+    return this.setUserSetting(key, value);
   }
 
   // Custom prompts methods
@@ -298,60 +320,6 @@ class SupabaseDatabaseService {
     }
   }
 
-  // Semantic search methods
-  async createEmbedding(content: string, contentType: 'conversation' | 'prompt' | 'document', sourceId?: string, metadata?: any): Promise<string> {
-    const userId = this.requireAuth();
-    
-    // Here you would typically call OpenAI API to generate embeddings
-    // For now, we'll store a placeholder
-    const { data, error } = await supabase
-      .from('embeddings')
-      .insert({
-        user_id: userId,
-        content,
-        content_type: contentType,
-        source_id: sourceId,
-        embedding: [], // Will be populated by edge function
-        metadata: metadata || {}
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      console.error('Error creating embedding:', error);
-      throw error;
-    }
-
-    return data.id;
-  }
-
-  async semanticSearch(query: string, contentType?: string, limit: number = 10): Promise<EmbeddingEntry[]> {
-    const userId = this.requireAuth();
-    
-    // This would typically use vector similarity search
-    // For now, we'll do a simple text search as fallback
-    let queryBuilder = supabase
-      .from('embeddings')
-      .select('*')
-      .eq('user_id', userId)
-      .textSearch('content', query);
-
-    if (contentType) {
-      queryBuilder = queryBuilder.eq('content_type', contentType);
-    }
-
-    const { data, error } = await queryBuilder
-      .limit(limit)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error performing semantic search:', error);
-      throw error;
-    }
-
-    return data || [];
-  }
-
   // Search cache methods
   async getCachedSearch(query: string): Promise<any | null> {
     const userId = this.requireAuth();
@@ -393,6 +361,33 @@ class SupabaseDatabaseService {
     }
   }
 
+  // Backward compatibility for search service
+  async getRecentSearchResult(query: string): Promise<any | null> {
+    return this.getCachedSearch(query);
+  }
+
+  async saveSearchResult(query: string, results: any): Promise<void> {
+    return this.setCachedSearch(query, results);
+  }
+
+  async getSearchResults(): Promise<any[]> {
+    const userId = this.requireAuth();
+    
+    const { data, error } = await supabase
+      .from('search_cache')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('Error getting search results:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
   // Utility methods
   async clearUserData(): Promise<void> {
     const userId = this.requireAuth();
@@ -409,6 +404,11 @@ class SupabaseDatabaseService {
         console.error(`Error clearing ${table}:`, error);
       }
     }
+  }
+
+  // Backward compatibility method
+  clearAllData(): void {
+    this.clearUserData().catch(console.error);
   }
 
   async getStorageStats(): Promise<{

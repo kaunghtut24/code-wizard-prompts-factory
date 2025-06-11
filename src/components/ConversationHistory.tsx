@@ -36,6 +36,7 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [selectedConversation, setSelectedConversation] = useState<ConversationEntry | null>(null);
   const [storageStats, setStorageStats] = useState<any>({});
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,38 +50,59 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
     filterConversations();
   }, [conversations, searchTerm, selectedAgent]);
 
-  const loadConversations = () => {
-    const allConversations = databaseService.getConversations();
-    setConversations(allConversations.reverse()); // Show newest first
+  const loadConversations = async () => {
+    try {
+      setLoading(true);
+      const allConversations = await databaseService.getConversations();
+      setConversations(allConversations); // Already sorted by created_at desc
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load conversations",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loadStorageStats = () => {
-    const stats = databaseService.getStorageStats();
-    setStorageStats(stats);
+  const loadStorageStats = async () => {
+    try {
+      const stats = await databaseService.getStorageStats();
+      setStorageStats(stats);
+    } catch (error) {
+      console.error('Error loading storage stats:', error);
+    }
   };
 
-  const filterConversations = () => {
+  const filterConversations = async () => {
     let filtered = conversations;
 
     // Filter by agent type
     if (selectedAgent !== 'all') {
-      filtered = filtered.filter(conv => conv.agentType === selectedAgent);
+      filtered = filtered.filter(conv => conv.agent_type === selectedAgent);
     }
 
     // Filter by search term
     if (searchTerm.trim()) {
-      filtered = databaseService.searchConversations(searchTerm);
+      try {
+        const searchResults = await databaseService.searchConversations(searchTerm);
+        filtered = searchResults;
+      } catch (error) {
+        console.error('Error searching conversations:', error);
+      }
     }
 
     setFilteredConversations(filtered);
   };
 
   const getUniqueAgents = () => {
-    const agents = new Set(conversations.map(conv => conv.agentType));
+    const agents = new Set(conversations.map(conv => conv.agent_type));
     return Array.from(agents);
   };
 
-  const formatTimestamp = (timestamp: number) => {
+  const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -117,18 +139,27 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
     });
   };
 
-  const clearAllData = () => {
+  const clearAllData = async () => {
     if (window.confirm('Are you sure you want to clear all conversation history? This action cannot be undone.')) {
-      databaseService.clearAllData();
-      setConversations([]);
-      setFilteredConversations([]);
-      setSelectedConversation(null);
-      loadStorageStats();
-      
-      toast({
-        title: "Data Cleared",
-        description: "All conversation history has been cleared",
-      });
+      try {
+        await databaseService.clearUserData();
+        setConversations([]);
+        setFilteredConversations([]);
+        setSelectedConversation(null);
+        await loadStorageStats();
+        
+        toast({
+          title: "Data Cleared",
+          description: "All conversation history has been cleared",
+        });
+      } catch (error) {
+        console.error('Error clearing data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to clear data",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -144,7 +175,7 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               <div>
                 <CardTitle>Conversation History</CardTitle>
                 <CardDescription>
-                  {storageStats.conversationCount} conversations stored ({storageStats.totalSizeKB}KB)
+                  {storageStats.conversationCount || 0} conversations stored
                 </CardDescription>
               </div>
             </div>
@@ -194,7 +225,11 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             {/* Conversation List */}
             <ScrollArea className="flex-1">
               <div className="space-y-2">
-                {filteredConversations.map((conversation) => (
+                {loading ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    Loading conversations...
+                  </div>
+                ) : filteredConversations.map((conversation) => (
                   <Card
                     key={conversation.id}
                     className={`cursor-pointer transition-all hover:shadow-md ${
@@ -207,15 +242,15 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between mb-2">
                         <Badge variant="secondary" className="text-xs">
-                          {conversation.agentType}
+                          {conversation.agent_type}
                         </Badge>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          {formatTimestamp(conversation.timestamp)}
+                          {formatTimestamp(conversation.created_at)}
                         </div>
                       </div>
                       <p className="text-sm text-gray-700 line-clamp-2">
-                        {conversation.userInput.slice(0, 100)}...
+                        {conversation.user_input.slice(0, 100)}...
                       </p>
                       {conversation.metadata?.hasCodeSnippets && (
                         <Badge variant="outline" className="text-xs mt-2">
@@ -226,7 +261,7 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                   </Card>
                 ))}
                 
-                {filteredConversations.length === 0 && (
+                {!loading && filteredConversations.length === 0 && (
                   <div className="text-center text-muted-foreground py-8">
                     <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No conversations found</p>
@@ -242,15 +277,15 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               <ScrollArea className="flex-1">
                 <div className="space-y-4 p-4">
                   <EnhancedMessageDisplay
-                    content={selectedConversation.userInput}
+                    content={selectedConversation.user_input}
                     isUser={true}
-                    timestamp={selectedConversation.timestamp}
+                    timestamp={new Date(selectedConversation.created_at).getTime()}
                   />
                   <EnhancedMessageDisplay
-                    content={selectedConversation.aiOutput}
+                    content={selectedConversation.ai_output}
                     isUser={false}
-                    agentType={selectedConversation.agentType}
-                    timestamp={selectedConversation.timestamp}
+                    agentType={selectedConversation.agent_type}
+                    timestamp={new Date(selectedConversation.created_at).getTime()}
                     hasSearchResults={!!selectedConversation.metadata?.searchResults}
                   />
                 </div>

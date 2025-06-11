@@ -215,11 +215,11 @@ const InteractiveChatInterface: React.FC<InteractiveChatInterfaceProps> = ({
           setMessages(prev => [...prev, finalMessage]);
         }
         
-        // Save to database
+        // Save to database with correct field names
         databaseService.saveConversation({
-          userInput: userInput,
-          agentType: 'collaborative',
-          aiOutput: finalOutput || 'Collaborative workflow completed',
+          user_input: userInput,
+          agent_type: 'collaborative',
+          ai_output: finalOutput || 'Collaborative workflow completed',
           metadata: {
             workflowType: 'collaborative',
             collaborativeAgents: taskAnalysis.agents,
@@ -275,7 +275,7 @@ Remember to be contextually aware of the entire conversation flow and any attach
     let searchUrls: string[] = [];
 
     // Check if web search is enabled and needed
-    const isSearchEnabled = databaseService.getUserPreference('search_enabled', true);
+    const isSearchEnabled = await databaseService.getUserSetting('search_enabled', true);
     if (isSearchEnabled && searchService.isConfigured() && searchService.shouldSearchForQuery(input)) {
       try {
         console.log('Performing web search for interactive chat query:', input);
@@ -317,11 +317,11 @@ Remember to be contextually aware of the entire conversation flow and any attach
 
     setMessages(prev => [...prev, aiMessage]);
 
-    // Save conversation to database
+    // Save conversation to database with correct field names
     databaseService.saveConversation({
-      userInput: input.trim(),
-      agentType: activeAgent,
-      aiOutput: enhancedContent,
+      user_input: input.trim(),
+      agent_type: activeAgent,
+      ai_output: enhancedContent,
       metadata: {
         hasCodeSnippets: response.content.includes('```'),
         searchResults: searchResults.length > 0 ? searchResults : undefined,
