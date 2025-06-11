@@ -25,7 +25,10 @@ import {
   Copy,
   Check,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  LogOut,
+  X,
+  Label
 } from 'lucide-react';
 import AgentOrchestrator from '@/components/AgentOrchestrator';
 import CodeGenerationAgent from '@/components/agents/CodeGenerationAgent';
@@ -47,6 +50,8 @@ import { searchService } from '@/services/searchService';
 import { databaseService } from '@/services/databaseService';
 import { promptService } from '@/services/promptService';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import DatabaseSettings from '@/components/DatabaseSettings';
 
 const Index = () => {
   const [activeAgent, setActiveAgent] = useState('orchestrator');
@@ -66,6 +71,7 @@ const Index = () => {
     searchResults?: any[];
   }>>([]);
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
 
   const agents = [
     {
@@ -394,347 +400,406 @@ CONTEXT AWARENESS:
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed Out",
+        description: "You have been signed out successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Sign Out Failed",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="relative">
-              <Bot className="h-12 w-12 text-blue-600" />
-              <Sparkles className="h-6 w-6 text-yellow-500 absolute -top-1 -right-1 animate-pulse" />
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              CodeCraft AI
-            </h1>
-          </div>
-          <p className="text-lg text-muted-foreground mb-4">
-            Professional Automatic Coding Assistant Agent System
-          </p>
-          
-          {/* Chat Mode Toggle */}
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <div className="flex items-center gap-2 p-2 bg-white rounded-lg border shadow-sm">
-              <span className={`text-sm font-medium ${!isInteractiveMode ? 'text-blue-600' : 'text-gray-500'}`}>
-                Conventional
-              </span>
-              <Switch
-                checked={isInteractiveMode}
-                onCheckedChange={setIsInteractiveMode}
-                className="data-[state=checked]:bg-green-500"
-              />
-              <span className={`text-sm font-medium ${isInteractiveMode ? 'text-green-600' : 'text-gray-500'}`}>
-                Interactive Chat
-              </span>
-              {isInteractiveMode ? (
-                <ToggleRight className="h-4 w-4 text-green-600 ml-1" />
-              ) : (
-                <ToggleLeft className="h-4 w-4 text-blue-600 ml-1" />
-              )}
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-              <Zap className="h-3 w-3 mr-1" />
-              9 Specialized Agents
-            </Badge>
-            <Badge variant="secondary" className="bg-green-100 text-green-700">
-              Production Ready
-            </Badge>
-            <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-              OpenAI Compatible
-            </Badge>
-            {isInteractiveMode && (
-              <Badge variant="secondary" className="bg-green-100 text-green-700">
-                <MessageSquare className="h-3 w-3 mr-1" />
-                Interactive Mode
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Bot className="h-8 w-8 text-blue-600" />
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  CodeCraft AI
+                </h1>
+              </div>
+              <Badge variant="outline" className="hidden sm:inline-flex">
+                Multi-Agent Coding Assistant
               </Badge>
-            )}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowAIConfig(true)}
-              className={`bg-white ${!aiService.isConfigured() ? 'border-red-300 text-red-600' : ''}`}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              AI Config {!aiService.isConfigured() && '⚠️'}
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowHistory(true)}
-              className="bg-white"
-            >
-              <History className="h-4 w-4 mr-2" />
-              History
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowSearchSettings(true)}
-              className={`bg-white ${!searchService.isConfigured() ? 'border-orange-300 text-orange-600' : ''}`}
-            >
-              <Globe className="h-4 w-4 mr-2" />
-              Web Search {!searchService.isConfigured() && '⚠️'}
-            </Button>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              {user && (
+                <div className="flex items-center space-x-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {user.email}
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </div>
+              )}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSettings(!showSettings)}
+                className="flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHistory(!showHistory)}
+                className="flex items-center gap-2"
+              >
+                <History className="h-4 w-4" />
+                History
+              </Button>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Agent Selection Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-8">
-          {agents.map((agent) => {
-            const IconComponent = agent.icon;
-            return (
-              <Card 
-                key={agent.id}
-                className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
-                  activeAgent === agent.id 
-                    ? 'border-blue-500 shadow-lg scale-105' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => setActiveAgent(agent.id)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${agent.color} text-white`}>
-                      <IconComponent className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-sm font-semibold">{agent.name}</CardTitle>
-                    </div>
+      {/* Agent Selection Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-8">
+        {agents.map((agent) => {
+          const IconComponent = agent.icon;
+          return (
+            <Card 
+              key={agent.id}
+              className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
+                activeAgent === agent.id 
+                  ? 'border-blue-500 shadow-lg scale-105' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => setActiveAgent(agent.id)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${agent.color} text-white`}>
+                    <IconComponent className="h-5 w-5" />
                   </div>
-                  <CardDescription className="text-xs leading-relaxed">
-                    {agent.description}
+                  <div>
+                    <CardTitle className="text-sm font-semibold">{agent.name}</CardTitle>
+                  </div>
+                </div>
+                <CardDescription className="text-xs leading-relaxed">
+                  {agent.description}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Conditional Interface Based on Mode */}
+      {isInteractiveMode ? (
+        <InteractiveChatInterface 
+          activeAgent={activeAgent}
+          agentName={agents.find(a => a.id === activeAgent)?.name || 'Agent'}
+        />
+      ) : (
+        <Tabs defaultValue="chat" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="chat" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Chat Interface
+            </TabsTrigger>
+            <TabsTrigger value="conversation" className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Conversation View
+            </TabsTrigger>
+            <TabsTrigger value="connectivity" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              System Status
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="chat" className="space-y-6">
+            {/* Original Interface */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Input Section */}
+              <Card className="h-fit">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Code className="h-5 w-5" />
+                    Input
+                  </CardTitle>
+                  <CardDescription>
+                    Describe your coding task or paste your code
                   </CardDescription>
                 </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    placeholder="Enter your request, code snippet, or question here..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    className="min-h-[200px] font-mono text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleProcess} 
+                      className="flex-1" 
+                      disabled={!input.trim() || isProcessing || !aiService.isConfigured()}
+                    >
+                      {isProcessing ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Process with {agents.find(a => a.id === activeAgent)?.name}
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      onClick={clearConversation} 
+                      variant="outline"
+                      disabled={conversationMessages.length === 0}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  {!aiService.isConfigured() && (
+                    <p className="text-sm text-red-600 text-center">
+                      ⚠️ Please configure AI settings first
+                    </p>
+                  )}
+                </CardContent>
               </Card>
-            );
-          })}
-        </div>
 
-        {/* Conditional Interface Based on Mode */}
-        {isInteractiveMode ? (
-          <InteractiveChatInterface 
-            activeAgent={activeAgent}
-            agentName={agents.find(a => a.id === activeAgent)?.name || 'Agent'}
-          />
-        ) : (
-          <Tabs defaultValue="chat" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="chat" className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Chat Interface
-              </TabsTrigger>
-              <TabsTrigger value="conversation" className="flex items-center gap-2">
-                <History className="h-4 w-4" />
-                Conversation View
-              </TabsTrigger>
-              <TabsTrigger value="connectivity" className="flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                System Status
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="chat" className="space-y-6">
-              {/* Original Interface */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Input Section */}
-                <Card className="h-fit">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Code className="h-5 w-5" />
-                      Input
-                    </CardTitle>
-                    <CardDescription>
-                      Describe your coding task or paste your code
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Textarea
-                      placeholder="Enter your request, code snippet, or question here..."
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      className="min-h-[200px] font-mono text-sm"
-                    />
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleProcess} 
-                        className="flex-1" 
-                        disabled={!input.trim() || isProcessing || !aiService.isConfigured()}
-                      >
-                        {isProcessing ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Process with {agents.find(a => a.id === activeAgent)?.name}
-                          </>
-                        )}
-                      </Button>
-                      <Button 
-                        onClick={clearConversation} 
-                        variant="outline"
-                        disabled={conversationMessages.length === 0}
-                      >
-                        Clear
-                      </Button>
-                    </div>
-                    {!aiService.isConfigured() && (
-                      <p className="text-sm text-red-600 text-center">
-                        ⚠️ Please configure AI settings first
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Output Section with Copy Button */}
-                <Card className="h-fit">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Bot className="h-5 w-5" />
-                        <CardTitle>Output</CardTitle>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCopyOutput}
-                        disabled={!output}
-                        className="flex items-center gap-1"
-                      >
-                        {copied ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                        {copied ? 'Copied!' : 'Copy'}
-                      </Button>
-                    </div>
-                    <CardDescription>
-                      Agent response and generated code
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="bg-gray-50 rounded-lg p-4 min-h-[200px] font-mono text-sm whitespace-pre-wrap">
-                      {output || 'Output will appear here...'}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="conversation" className="space-y-6">
-              {/* Enhanced Conversation View */}
-              <Card>
+              {/* Output Section with Copy Button */}
+              <Card className="h-fit">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5" />
-                      <CardTitle>Conversation</CardTitle>
+                      <Bot className="h-5 w-5" />
+                      <CardTitle>Output</CardTitle>
                     </div>
-                    <Button 
-                      onClick={clearConversation} 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
-                      disabled={conversationMessages.length === 0}
+                      onClick={handleCopyOutput}
+                      disabled={!output}
+                      className="flex items-center gap-1"
                     >
-                      Clear Conversation
+                      {copied ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                      {copied ? 'Copied!' : 'Copy'}
                     </Button>
                   </div>
                   <CardDescription>
-                    Enhanced view with code highlighting and search integration
+                    Agent response and generated code
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                    {conversationMessages.length === 0 ? (
-                      <div className="text-center text-muted-foreground py-12">
-                        <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                        <p className="text-lg mb-2">Start a conversation</p>
-                        <p className="text-sm">Switch to the Chat Interface tab to begin</p>
-                      </div>
-                    ) : (
-                      conversationMessages.map((message, index) => (
-                        <EnhancedMessageDisplay
-                          key={index}
-                          content={message.content}
-                          isUser={message.isUser}
-                          agentType={message.agentType}
-                          timestamp={message.timestamp}
-                          hasSearchResults={!!message.searchResults}
-                        />
-                      ))
-                    )}
+                  <div className="bg-gray-50 rounded-lg p-4 min-h-[200px] font-mono text-sm whitespace-pre-wrap">
+                    {output || 'Output will appear here...'}
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
+            </div>
+          </TabsContent>
 
-            <TabsContent value="connectivity" className="space-y-6">
-              {/* Connectivity Checker */}
-              <ConnectivityChecker />
-            </TabsContent>
-          </Tabs>
-        )}
+          <TabsContent value="conversation" className="space-y-6">
+            {/* Enhanced Conversation View */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    <CardTitle>Conversation</CardTitle>
+                  </div>
+                  <Button 
+                    onClick={clearConversation} 
+                    variant="outline" 
+                    size="sm"
+                    disabled={conversationMessages.length === 0}
+                  >
+                    Clear Conversation
+                  </Button>
+                </div>
+                <CardDescription>
+                  Enhanced view with code highlighting and search integration
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                  {conversationMessages.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-12">
+                      <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg mb-2">Start a conversation</p>
+                      <p className="text-sm">Switch to the Chat Interface tab to begin</p>
+                    </div>
+                  ) : (
+                    conversationMessages.map((message, index) => (
+                      <EnhancedMessageDisplay
+                        key={index}
+                        content={message.content}
+                        isUser={message.isUser}
+                        agentType={message.agentType}
+                        timestamp={message.timestamp}
+                        hasSearchResults={!!message.searchResults}
+                      />
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Active Agent Component (only show in conventional mode) */}
-        {!isInteractiveMode && (
-          <div className="mt-8">
-            {renderActiveAgent()}
-          </div>
-        )}
+          <TabsContent value="connectivity" className="space-y-6">
+            {/* Connectivity Checker */}
+            <ConnectivityChecker />
+          </TabsContent>
+        </Tabs>
+      )}
 
-        {/* Features Section */}
-        <div className="mt-12 text-center">
-          <h2 className="text-2xl font-bold mb-6">Agent Capabilities</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🧠 Intelligent Routing</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Automatically selects the best agent for your specific coding task
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">💾 Persistent Memory</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Stores conversations and learns from your interactions
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🌐 Web Search</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Integrates real-time web search for up-to-date information
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">💬 Interactive Chat</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Context-aware conversational interface with memory
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+      {/* Active Agent Component (only show in conventional mode) */}
+      {!isInteractiveMode && (
+        <div className="mt-8">
+          {renderActiveAgent()}
+        </div>
+      )}
+
+      {/* Features Section */}
+      <div className="mt-12 text-center">
+        <h2 className="text-2xl font-bold mb-6">Agent Capabilities</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">🧠 Intelligent Routing</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Automatically selects the best agent for your specific coding task
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">💾 Persistent Memory</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Stores conversations and learns from your interactions
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">🌐 Web Search</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Integrates real-time web search for up-to-date information
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">💬 Interactive Chat</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Context-aware conversational interface with memory
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
+                <Button variant="ghost" onClick={() => setShowSettings(false)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              
+              <Tabs defaultValue="ai" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="ai">AI Models</TabsTrigger>
+                  <TabsTrigger value="search">Web Search</TabsTrigger>
+                  <TabsTrigger value="database">Database</TabsTrigger>
+                  <TabsTrigger value="general">General</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="ai" className="mt-6">
+                  <AIConfiguration />
+                </TabsContent>
+                
+                <TabsContent value="search" className="mt-6">
+                  <SearchSettings />
+                </TabsContent>
+                
+                <TabsContent value="database" className="mt-6">
+                  <DatabaseSettings />
+                </TabsContent>
+                
+                <TabsContent value="general" className="mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>General Settings</CardTitle>
+                      <CardDescription>
+                        Configure general application preferences
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Dark Mode</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Toggle between light and dark themes
+                            </p>
+                          </div>
+                          <Switch />
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Show Notifications</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Enable desktop notifications for important events
+                            </p>
+                          </div>
+                          <Switch />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <AIConfiguration 
