@@ -13,54 +13,105 @@ interface SearchResponse {
   query: string;
   timestamp: number;
   cached: boolean;
+  provider?: string;
+}
+
+interface SearchConfiguration {
+  provider: string;
+  serpApiKey?: string;
+  tavilyApiKey?: string;
+  maxResults: number;
 }
 
 class SearchService {
-  private apiKey: string | null = null;
+  private config: SearchConfiguration = {
+    provider: 'duckduckgo',
+    maxResults: 5
+  };
   private readonly proxyUrl = 'https://api.allorigins.win/get?url=';
   private readonly requestTimeout = 10000;
 
   constructor() {
-    this.loadApiKey();
+    this.loadConfiguration();
   }
 
-  private async loadApiKey(): Promise<void> {
+  private async loadConfiguration(): Promise<void> {
     try {
-      this.apiKey = await databaseService.getUserSetting('serpapi_key', null);
-      console.log('SerpApi key loaded:', !!this.apiKey);
+      const provider = await databaseService.getUserSetting('search_provider', 'duckduckgo');
+      const maxResults = await databaseService.getUserSetting('search_max_results', 5);
+      const serpApiKey = await databaseService.getUserSetting('serpapi_key', '');
+      const tavilyApiKey = await databaseService.getUserSetting('tavily_api_key', '');
+
+      this.config = {
+        provider,
+        maxResults,
+        serpApiKey: serpApiKey || undefined,
+        tavilyApiKey: tavilyApiKey || undefined
+      };
+
+      console.log('Search service configured:', { 
+        provider: this.config.provider,
+        maxResults: this.config.maxResults,
+        hasSerpKey: !!this.config.serpApiKey,
+        hasTavilyKey: !!this.config.tavilyApiKey
+      });
     } catch (error) {
-      console.error('Failed to load API key:', error);
-      this.apiKey = null;
+      console.error('Failed to load search configuration:', error);
     }
+  }
+
+  public async configure(config: SearchConfiguration): Promise<void> {
+    this.config = { ...config };
+    console.log('Search service reconfigured:', this.config.provider);
   }
 
   public getApiKey(): string | null {
-    return this.apiKey;
+    if (this.config.provider === 'serpapi') {
+      return this.config.serpApiKey || null;
+    }
+    if (this.config.provider === 'tavily') {
+      return this.config.tavilyApiKey || null;
+    }
+    return null; // DuckDuckGo doesn't need API key
   }
 
   public async setApiKey(apiKey: string): Promise<void> {
-    this.apiKey = apiKey;
-    await databaseService.setUserSetting('serpapi_key', apiKey);
-    console.log('SerpApi key updated');
+    if (this.config.provider === 'serpapi') {
+      this.config.serpApiKey = apiKey;
+      await databaseService.setUserSetting('serpapi_key', apiKey);
+    } else if (this.config.provider === 'tavily') {
+      this.config.tavilyApiKey = apiKey;
+      await databaseService.setUserSetting('tavily_api_key', apiKey);
+    }
+    console.log(`${this.config.provider} API key updated`);
   }
 
   public isConfigured(): boolean {
-    return !!this.apiKey;
+    if (this.config.provider === 'duckduckgo') {
+      return true; // No API key needed
+    }
+    if (this.config.provider === 'serpapi') {
+      return !!this.config.serpApiKey;
+    }
+    if (this.config.provider === 'tavily') {
+      return !!this.config.tavilyApiKey;
+    }
+    return false;
   }
 
-  private async fetchWithTimeout(url: string, timeoutMs: number = this.requestTimeout): Promise<Response> {
+  private async fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = this.requestTimeout): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const headers: HeadersInit = { 'Accept': 'application/json' };
-    if (!url.includes('allorigins')) {
-      headers['Cache-Control'] = 'no-cache';
-    }
-
     try {
       const response = await fetch(url, {
+        ...options,
         signal: controller.signal,
-        headers
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...options.headers
+        }
       });
 
       clearTimeout(timeoutId);
@@ -79,9 +130,14 @@ class SearchService {
     maxResults?: number;
     location?: string;
   } = {}): Promise<SearchResponse> {
-    const { useCache = true, maxResults = 10, location = 'United States' } = options;
+    const { useCache = true, maxResults = this.config.maxResults, location = 'United States' } = options;
 
-    console.log('Starting web search:', { query, useCache, maxResults });
+    console.log('Starting web search:', { 
+      query, 
+      provider: this.config.provider, 
+      useCache, 
+      maxResults 
+    });
 
     if (useCache) {
       const cachedResult = await databaseService.getCachedSearch(query);
@@ -91,41 +147,66 @@ class SearchService {
           results: cachedResult.slice(0, maxResults),
           query,
           timestamp: Date.now(),
-          cached: true
+          cached: true,
+          provider: this.config.provider
         };
       }
     }
 
-    if (!this.isConfigured()) {
-      throw new Error('SerpApi key not configured. Please set your API key in settings.');
-    }
-
     try {
-      const result = await this.performSerpApiSearch(query, maxResults, location);
-      await databaseService.setCachedSearch(query, result.results);
-      console.log('Web search completed:', { resultCount: result.results.length });
-      return result;
-    } catch (error) {
-      console.error('Primary search failed:', error);
+      let result: SearchResponse;
 
-      if (error instanceof Error && (
-        error.message.includes('timeout') ||
-        error.message.includes('408') ||
-        error.message.includes('Proxy error')
-      )) {
-        console.log('Attempting fallback search due to timeout...');
-        return this.fallbackSearch(query, maxResults);
+      switch (this.config.provider) {
+        case 'serpapi':
+          result = await this.performSerpApiSearch(query, maxResults, location);
+          break;
+        case 'tavily':
+          result = await this.performTavilySearch(query, maxResults);
+          break;
+        case 'duckduckgo':
+        default:
+          result = await this.performDuckDuckGoSearch(query, maxResults);
+          break;
       }
 
-      throw error;
+      if (result.results.length > 0) {
+        await databaseService.setCachedSearch(query, result.results);
+      }
+      
+      console.log('Web search completed:', { 
+        provider: this.config.provider,
+        resultCount: result.results.length 
+      });
+      
+      return result;
+    } catch (error) {
+      console.error(`${this.config.provider} search failed:`, error);
+      
+      // Fallback to DuckDuckGo if primary search fails
+      if (this.config.provider !== 'duckduckgo') {
+        console.log('Attempting fallback to DuckDuckGo...');
+        try {
+          const fallbackResult = await this.performDuckDuckGoSearch(query, maxResults);
+          fallbackResult.provider = 'duckduckgo (fallback)';
+          return fallbackResult;
+        } catch (fallbackError) {
+          console.error('Fallback search also failed:', fallbackError);
+        }
+      }
+
+      return this.getErrorResponse(query, error);
     }
   }
 
   private async performSerpApiSearch(query: string, maxResults: number, location: string): Promise<SearchResponse> {
+    if (!this.config.serpApiKey) {
+      throw new Error('SerpApi key not configured');
+    }
+
     const params = new URLSearchParams({
       engine: 'google',
       q: query,
-      api_key: this.apiKey!,
+      api_key: this.config.serpApiKey,
       num: maxResults.toString(),
       location,
       hl: 'en',
@@ -133,135 +214,140 @@ class SearchService {
     });
 
     const targetUrl = `https://serpapi.com/search.json?${params}`;
+    const response = await this.fetchWithTimeout(`${this.proxyUrl}${encodeURIComponent(targetUrl)}`);
 
-    const proxyUrls = [
-      `${this.proxyUrl}${encodeURIComponent(targetUrl)}`,
-      targetUrl // direct (likely to fail CORS but try anyway)
-    ];
-
-    let lastError: Error | null = null;
-
-    for (const proxyUrl of proxyUrls) {
-      try {
-        console.log('Attempting search with URL:',
-          proxyUrl.includes('allorigins') ? 'allorigins proxy' : 'direct');
-
-        const response = await this.fetchWithTimeout(proxyUrl, 8000);
-
-        if (!response.ok) {
-          if (response.status === 408) {
-            throw new Error('Request timeout - server took too long to respond');
-          }
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        let data;
-        if (proxyUrl.includes('allorigins')) {
-          const proxyData = await response.json();
-          if (!proxyData.contents) {
-            throw new Error('No data received from proxy');
-          }
-          data = JSON.parse(proxyData.contents);
-        } else {
-          data = await response.json();
-        }
-
-        if (data.error) {
-          if (data.error.includes('Invalid API key')) {
-            throw new Error('Invalid SerpApi key. Please check your API key configuration.');
-          }
-          throw new Error(`Search API error: ${data.error}`);
-        }
-
-        const results: SearchResult[] = (data.organic_results || [])
-          .slice(0, maxResults)
-          .map((result: any, index: number) => ({
-            title: result.title || '',
-            link: result.link || '',
-            snippet: result.snippet || '',
-            position: result.position || index + 1,
-            date: result.date || undefined
-          }));
-
-        return {
-          results,
-          query,
-          timestamp: Date.now(),
-          cached: false
-        };
-
-      } catch (error) {
-        lastError = error as Error;
-        console.log(`Proxy attempt failed: ${lastError.message}`);
-        continue;
-      }
+    if (!response.ok) {
+      throw new Error(`SerpApi request failed: ${response.status}`);
     }
 
-    throw lastError || new Error('All search attempts failed');
+    const proxyData = await response.json();
+    const data = JSON.parse(proxyData.contents);
+
+    if (data.error) {
+      throw new Error(`SerpApi error: ${data.error}`);
+    }
+
+    const results: SearchResult[] = (data.organic_results || [])
+      .slice(0, maxResults)
+      .map((result: any, index: number) => ({
+        title: result.title || '',
+        link: result.link || '',
+        snippet: result.snippet || '',
+        position: result.position || index + 1,
+        date: result.date || undefined
+      }));
+
+    return {
+      results,
+      query,
+      timestamp: Date.now(),
+      cached: false,
+      provider: 'serpapi'
+    };
   }
 
-  private async fallbackSearch(query: string, maxResults: number): Promise<SearchResponse> {
-    console.log('Using fallback search method...');
-
-    try {
-      const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
-      const response = await this.fetchWithTimeout(`${this.proxyUrl}${encodeURIComponent(ddgUrl)}`, 5000);
-
-      if (!response.ok) {
-        throw new Error(`Fallback search failed: ${response.status}`);
-      }
-
-      const proxyData = await response.json();
-      const data = JSON.parse(proxyData.contents);
-
-      const results: SearchResult[] = [];
-
-      if (data.Abstract && data.AbstractText) {
-        results.push({
-          title: data.Heading || 'Instant Answer',
-          link: data.AbstractURL || '#',
-          snippet: data.AbstractText,
-          position: 1
-        });
-      }
-
-      if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
-        data.RelatedTopics.slice(0, maxResults - 1).forEach((topic: any, index: number) => {
-          if (topic.Text && topic.FirstURL) {
-            results.push({
-              title: topic.Text.split(' - ')[0] || 'Related Topic',
-              link: topic.FirstURL,
-              snippet: topic.Text,
-              position: index + 2
-            });
-          }
-        });
-      }
-
-      console.log('Fallback search completed:', { resultCount: results.length });
-
-      return {
-        results: results.slice(0, maxResults),
-        query,
-        timestamp: Date.now(),
-        cached: false
-      };
-
-    } catch (fallbackError) {
-      console.error('Fallback search failed:', fallbackError);
-
-      return {
-        results: [{
-          title: 'Search Service Unavailable',
-          link: '#',
-          snippet: 'Web search is temporarily unavailable due to network issues. Please check your internet connection and API configuration, then try again later.',
-          position: 1
-        }],
-        query,
-        timestamp: Date.now(),
-        cached: false
-      };
+  private async performTavilySearch(query: string, maxResults: number): Promise<SearchResponse> {
+    if (!this.config.tavilyApiKey) {
+      throw new Error('Tavily API key not configured');
     }
+
+    const response = await this.fetchWithTimeout('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.config.tavilyApiKey}`
+      },
+      body: JSON.stringify({
+        query,
+        max_results: maxResults,
+        search_depth: 'basic',
+        include_answer: false,
+        include_raw_content: false
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Tavily request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    const results: SearchResult[] = (data.results || [])
+      .slice(0, maxResults)
+      .map((result: any, index: number) => ({
+        title: result.title || '',
+        link: result.url || '',
+        snippet: result.content || '',
+        position: index + 1
+      }));
+
+    return {
+      results,
+      query,
+      timestamp: Date.now(),
+      cached: false,
+      provider: 'tavily'
+    };
+  }
+
+  private async performDuckDuckGoSearch(query: string, maxResults: number): Promise<SearchResponse> {
+    const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+    const response = await this.fetchWithTimeout(`${this.proxyUrl}${encodeURIComponent(ddgUrl)}`);
+
+    if (!response.ok) {
+      throw new Error(`DuckDuckGo request failed: ${response.status}`);
+    }
+
+    const proxyData = await response.json();
+    const data = JSON.parse(proxyData.contents);
+
+    const results: SearchResult[] = [];
+
+    if (data.Abstract && data.AbstractText) {
+      results.push({
+        title: data.Heading || 'Instant Answer',
+        link: data.AbstractURL || '#',
+        snippet: data.AbstractText,
+        position: 1
+      });
+    }
+
+    if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
+      data.RelatedTopics.slice(0, maxResults - 1).forEach((topic: any, index: number) => {
+        if (topic.Text && topic.FirstURL) {
+          results.push({
+            title: topic.Text.split(' - ')[0] || 'Related Topic',
+            link: topic.FirstURL,
+            snippet: topic.Text,
+            position: index + 2
+          });
+        }
+      });
+    }
+
+    return {
+      results: results.slice(0, maxResults),
+      query,
+      timestamp: Date.now(),
+      cached: false,
+      provider: 'duckduckgo'
+    };
+  }
+
+  private getErrorResponse(query: string, error: any): SearchResponse {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown search error';
+    
+    return {
+      results: [{
+        title: 'Search Service Unavailable',
+        link: '#',
+        snippet: `Web search is temporarily unavailable: ${errorMessage}. Please check your configuration and try again.`,
+        position: 1
+      }],
+      query,
+      timestamp: Date.now(),
+      cached: false,
+      provider: this.config.provider
+    };
   }
 
   public shouldSearchForQuery(query: string): boolean {
@@ -282,7 +368,8 @@ class SearchService {
     }
 
     const cacheIndicator = searchResponse.cached ? ' (cached)' : '';
-    let formatted = `🔍 Web Search Results for "${searchResponse.query}"${cacheIndicator}:\n\n`;
+    const providerIndicator = searchResponse.provider ? ` via ${searchResponse.provider}` : '';
+    let formatted = `🔍 Web Search Results for "${searchResponse.query}"${cacheIndicator}${providerIndicator}:\n\n`;
 
     searchResponse.results.forEach((result, index) => {
       formatted += `${index + 1}. **${result.title}**\n`;

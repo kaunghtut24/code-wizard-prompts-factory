@@ -348,155 +348,159 @@ Remember to be contextually aware of the entire conversation flow and any attach
   };
 
   return (
-    <Card className="h-[700px] flex flex-col">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-blue-600" />
-            <CardTitle className="text-lg">Interactive Chat with {agentName}</CardTitle>
+    <div className="h-full flex flex-col">
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardHeader className="pb-3 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-blue-600" />
+              <CardTitle className="text-lg">Interactive Chat with {agentName}</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              {searchService.isConfigured() && (
+                <Badge variant="secondary" className="text-xs">
+                  <Globe className="h-3 w-3 mr-1" />
+                  Web Search Enabled
+                </Badge>
+              )}
+              {activeWorkflow && (
+                <Badge variant="default" className="text-xs">
+                  <Workflow className="h-3 w-3 mr-1" />
+                  Collaborative Mode
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearChat}
+                disabled={messages.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {searchService.isConfigured() && (
-              <Badge variant="secondary" className="text-xs">
-                <Globe className="h-3 w-3 mr-1" />
-                Web Search Enabled
-              </Badge>
-            )}
-            {activeWorkflow && (
-              <Badge variant="default" className="text-xs">
-                <Workflow className="h-3 w-3 mr-1" />
-                Collaborative Mode
-              </Badge>
-            )}
+          
+          {/* Workflow Progress */}
+          {workflowProgress && !workflowProgress.isComplete && (
+            <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    Collaborative Workflow Progress
+                  </span>
+                </div>
+                <span className="text-xs text-blue-600 dark:text-blue-400">
+                  {workflowProgress.currentStep} / {workflowProgress.totalSteps}
+                </span>
+              </div>
+              <Progress 
+                value={(workflowProgress.currentStep / workflowProgress.totalSteps) * 100} 
+                className="mb-2"
+              />
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-blue-600 dark:text-blue-400">
+                  Current: {workflowProgress.nextAgent?.charAt(0).toUpperCase() + workflowProgress.nextAgent?.slice(1)} Agent
+                </span>
+                {workflowProgress.completedAgents.length > 0 && (
+                  <span className="text-xs text-green-600 dark:text-green-400">
+                    ✓ Completed: {workflowProgress.completedAgents.join(', ')}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </CardHeader>
+
+        <CardContent className="flex-1 flex flex-col space-y-4 min-h-0">
+          {/* Messages Area with proper scrolling */}
+          <div className="flex-1 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="space-y-6 pr-4">
+                {messages.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-12">
+                    <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg mb-2">Start a conversation</p>
+                    <p className="text-sm">Ask me anything! I can work alone or collaborate with other agents for complex tasks.</p>
+                  </div>
+                ) : (
+                  messages.map((message) => (
+                    <div key={message.id}>
+                      <EnhancedMessageDisplay
+                        content={message.content}
+                        isUser={message.isUser}
+                        agentType={message.agentType}
+                        timestamp={message.timestamp}
+                        hasSearchResults={!!message.searchResults}
+                        compact={false}
+                      />
+                      
+                      {message.attachedFiles && message.attachedFiles.length > 0 && (
+                        <div className="mt-2 ml-16">
+                          <div className="text-xs text-gray-600 mb-1">Attached files:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {message.attachedFiles.map((file) => (
+                              <Badge key={file.id} variant="outline" className="text-xs">
+                                {file.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* File Attachment Area */}
+          {(attachedFiles.length > 0 || !isProcessing) && (
+            <div className="border-t pt-3 flex-shrink-0">
+              <FileAttachment
+                onFilesChange={setAttachedFiles}
+                maxFiles={3}
+                maxSizePerFile={10}
+              />
+            </div>
+          )}
+
+          {/* Input Area */}
+          <div className="flex items-end gap-2 pt-3 border-t flex-shrink-0">
+            <div className="flex-1">
+              <Input
+                placeholder="Type your message... (Press Enter to send)"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isProcessing}
+                className="resize-none"
+              />
+            </div>
             <Button
-              variant="outline"
+              onClick={handleSendMessage}
+              disabled={(!input.trim() && attachedFiles.length === 0) || isProcessing || !aiService.isConfigured()}
               size="sm"
-              onClick={clearChat}
-              disabled={messages.length === 0}
+              className="flex-shrink-0"
             >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Clear
+              {isProcessing ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
-        </div>
-        
-        {/* Workflow Progress */}
-        {workflowProgress && !workflowProgress.isComplete && (
-          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  Collaborative Workflow Progress
-                </span>
-              </div>
-              <span className="text-xs text-blue-600 dark:text-blue-400">
-                {workflowProgress.currentStep} / {workflowProgress.totalSteps}
-              </span>
-            </div>
-            <Progress 
-              value={(workflowProgress.currentStep / workflowProgress.totalSteps) * 100} 
-              className="mb-2"
-            />
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-blue-600 dark:text-blue-400">
-                Current: {workflowProgress.nextAgent?.charAt(0).toUpperCase() + workflowProgress.nextAgent?.slice(1)} Agent
-              </span>
-              {workflowProgress.completedAgents.length > 0 && (
-                <span className="text-xs text-green-600 dark:text-green-400">
-                  ✓ Completed: {workflowProgress.completedAgents.join(', ')}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-      </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col space-y-4">
-        {/* Messages Area */}
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6">
-            {messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-12">
-                <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg mb-2">Start a conversation</p>
-                <p className="text-sm">Ask me anything! I can work alone or collaborate with other agents for complex tasks.</p>
-              </div>
-            ) : (
-              messages.map((message) => (
-                <div key={message.id}>
-                  <EnhancedMessageDisplay
-                    content={message.content}
-                    isUser={message.isUser}
-                    agentType={message.agentType}
-                    timestamp={message.timestamp}
-                    hasSearchResults={!!message.searchResults}
-                    compact={false}
-                  />
-                  
-                  {message.attachedFiles && message.attachedFiles.length > 0 && (
-                    <div className="mt-2 ml-16">
-                      <div className="text-xs text-gray-600 mb-1">Attached files:</div>
-                      <div className="flex flex-wrap gap-1">
-                        {message.attachedFiles.map((file) => (
-                          <Badge key={file.id} variant="outline" className="text-xs">
-                            {file.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-
-        {/* File Attachment Area */}
-        {(attachedFiles.length > 0 || !isProcessing) && (
-          <div className="border-t pt-3">
-            <FileAttachment
-              onFilesChange={setAttachedFiles}
-              maxFiles={3}
-              maxSizePerFile={10}
-            />
-          </div>
-        )}
-
-        {/* Input Area */}
-        <div className="flex items-end gap-2 pt-3 border-t">
-          <div className="flex-1">
-            <Input
-              placeholder="Type your message... (Press Enter to send)"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={isProcessing}
-              className="resize-none"
-            />
-          </div>
-          <Button
-            onClick={handleSendMessage}
-            disabled={(!input.trim() && attachedFiles.length === 0) || isProcessing || !aiService.isConfigured()}
-            size="sm"
-            className="flex-shrink-0"
-          >
-            {isProcessing ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-
-        {!aiService.isConfigured() && (
-          <p className="text-sm text-red-600 text-center">
-            ⚠️ Please configure AI settings first
-          </p>
-        )}
-      </CardContent>
-    </Card>
+          {!aiService.isConfigured() && (
+            <p className="text-sm text-red-600 text-center flex-shrink-0">
+              ⚠️ Please configure AI settings first
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
