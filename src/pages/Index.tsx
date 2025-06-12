@@ -758,7 +758,7 @@ CONTEXT AWARENESS:
                 </TabsContent>
                 
                 <TabsContent value="search" className="mt-6">
-                  <SearchSettings />
+                  <SearchSettings isOpen={true} onClose={() => {}} />
                 </TabsContent>
                 
                 <TabsContent value="database" className="mt-6">
