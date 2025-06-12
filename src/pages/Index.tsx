@@ -1,825 +1,208 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { 
-  Bot, 
-  Code, 
-  Bug, 
-  RefreshCw, 
-  TestTube, 
-  FileText, 
-  GitBranch, 
-  Search,
-  Sparkles,
-  Zap,
-  Brain,
-  Settings,
-  Database,
-  History,
-  Globe,
-  MessageSquare,
-  Copy,
-  Check,
-  ToggleLeft,
-  ToggleRight,
-  LogOut,
-  X
-} from 'lucide-react';
-import AgentOrchestrator from '@/components/AgentOrchestrator';
-import CodeGenerationAgent from '@/components/agents/CodeGenerationAgent';
-import BugFixAgent from '@/components/agents/BugFixAgent';
-import RefactorAgent from '@/components/agents/RefactorAgent';
-import TestGeneratorAgent from '@/components/agents/TestGeneratorAgent';
-import DocumentationAgent from '@/components/agents/DocumentationAgent';
-import GitHubAgent from '@/components/agents/GitHubAgent';
-import SemanticSearchAgent from '@/components/agents/SemanticSearchAgent';
-import MCPAnalysisAgent from '@/components/agents/MCPAnalysisAgent';
+import { Button } from "@/components/ui/button";
+import { LogOut, Settings, Bot } from "lucide-react";
+import { authService } from "@/services/authService";
+import { useNavigate } from "react-router-dom";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AIConfiguration from '@/components/AIConfiguration';
-import ConversationHistory from '@/components/ConversationHistory';
-import SearchSettings from '@/components/SearchSettings';
-import EnhancedMessageDisplay from '@/components/EnhancedMessageDisplay';
-import InteractiveChatInterface from '@/components/InteractiveChatInterface';
-import ConnectivityChecker from '@/components/ConnectivityChecker';
-import { aiService } from '@/services/aiService';
-import { searchService } from '@/services/searchService';
-import { databaseService } from '@/services/databaseService';
-import { promptService } from '@/services/promptService';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
 import DatabaseSettings from '@/components/DatabaseSettings';
+import SearchSettings from '@/components/SearchSettings';
+import AgentOrchestrator from '@/components/AgentOrchestrator';
+import InteractiveChatInterface from '@/components/InteractiveChatInterface';
+import ConversationHistory from '@/components/ConversationHistory';
 
 const Index = () => {
-  const [activeAgent, setActiveAgent] = useState('orchestrator');
-  const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showAIConfig, setShowAIConfig] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [showSearchSettings, setShowSearchSettings] = useState(false);
+  const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [isInteractiveMode, setIsInteractiveMode] = useState(false);
-  const [conversationMessages, setConversationMessages] = useState<Array<{
-    content: string;
-    isUser: boolean;
-    agentType?: string;
-    timestamp: number;
-    searchResults?: any[];
-  }>>([]);
-  const { toast } = useToast();
-  const { user, signOut } = useAuth();
+  const [showAIConfig, setShowAIConfig] = useState(false);
+  const [showDatabaseSettings, setShowDatabaseSettings] = useState(false);
+  const [showAgentOrchestrator, setShowAgentOrchestrator] = useState(false);
+  const [currentAgent, setCurrentAgent] = useState("general");
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
-  const agents = [
-    {
-      id: 'orchestrator',
-      name: 'Agent Orchestrator',
-      description: 'Intelligent coordinator that routes tasks to specialized agents',
-      icon: Brain,
-      color: 'bg-purple-500'
-    },
-    {
-      id: 'code-gen',
-      name: 'Code Generator',
-      description: 'Generates clean, production-ready code from natural language',
-      icon: Code,
-      color: 'bg-blue-500'
-    },
-    {
-      id: 'bug-fix',
-      name: 'Bug Fixer',
-      description: 'Analyzes and fixes code issues with precision',
-      icon: Bug,
-      color: 'bg-red-500'
-    },
-    {
-      id: 'refactor',
-      name: 'Refactor Specialist',
-      description: 'Optimizes code structure and performance',
-      icon: RefreshCw,
-      color: 'bg-green-500'
-    },
-    {
-      id: 'test-gen',
-      name: 'Test Generator',
-      description: 'Creates comprehensive test suites',
-      icon: TestTube,
-      color: 'bg-yellow-500'
-    },
-    {
-      id: 'docs',
-      name: 'Documentation',
-      description: 'Generates clear, comprehensive documentation',
-      icon: FileText,
-      color: 'bg-indigo-500'
-    },
-    {
-      id: 'github',
-      name: 'GitHub Assistant',
-      description: 'Manages repository operations and collaboration',
-      icon: GitBranch,
-      color: 'bg-gray-700'
-    },
-    {
-      id: 'search',
-      name: 'Semantic Search',
-      description: 'Intelligent codebase exploration and analysis',
-      icon: Search,
-      color: 'bg-orange-500'
-    },
-    {
-      id: 'mcp',
-      name: 'MCP Analyzer',
-      description: 'Modular codebase analysis and relationship mapping',
-      icon: Settings,
-      color: 'bg-teal-500'
-    }
-  ];
-
-  const handleCopyOutput = async () => {
-    if (!output) return;
-    
-    try {
-      await navigator.clipboard.writeText(output);
-      setCopied(true);
-      toast({
-        title: "Output Copied",
-        description: "Output has been copied to clipboard",
-      });
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      toast({
-        title: "Copy Failed",
-        description: "Failed to copy output to clipboard",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const extractUrlsFromSearchResults = (searchResults: any[]): string[] => {
-    return searchResults.map(result => result.url || result.link).filter(Boolean);
-  };
-
-  const embedSearchUrls = (content: string, urls: string[]): string => {
-    if (!urls || urls.length === 0) return content;
-    
-    const urlSection = `\n\n**🌐 Sources Used:**\n${urls.map((url, index) => 
-      `[${index + 1}] ${url}`
-    ).join('\n')}`;
-    
-    return content + urlSection;
-  };
-
-  const handleProcess = async () => {
-    if (!aiService.isConfigured()) {
-      toast({
-        title: "AI Not Configured",
-        description: "Please configure your AI model settings first.",
-        variant: "destructive",
-      });
-      setShowAIConfig(true);
-      return;
-    }
-
-    if (!input.trim()) {
-      toast({
-        title: "Input Required",
-        description: "Please enter your request before processing.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsProcessing(true);
-    const userMessage = {
-      content: input.trim(),
-      isUser: true,
-      timestamp: Date.now()
+  useEffect(() => {
+    const checkAuth = async () => {
+      const user = await authService.getCurrentUser();
+      if (!user) {
+        navigate('/auth');
+      }
     };
-    
-    // Add user message to conversation
-    setConversationMessages(prev => [...prev, userMessage]);
-    setOutput('Processing your request...');
-    
-    try {
-      console.log('Starting AI processing with agent:', activeAgent);
-      
-      // Build conversation context for interactive chat
-      let messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [];
-      
-      // Enhanced system prompt that indicates search capabilities
-      const baseSystemPrompt = promptService.getPrompt(activeAgent);
-      const enhancedSystemPrompt = `${baseSystemPrompt}
 
-CONTEXT AWARENESS:
-- You can reference previous messages in this conversation for better context
-- If you use web search results, mention the sources naturally in your response
-- The user will see source URLs automatically appended to your response when web search is used
-- Provide comprehensive but focused responses`;
-
-      messages.push({ role: 'system', content: enhancedSystemPrompt });
-      
-      // Add conversation history for context (last 6 messages)
-      const recentMessages = conversationMessages.slice(-6);
-      recentMessages.forEach(msg => {
-        messages.push({
-          role: msg.isUser ? 'user' : 'assistant',
-          content: msg.content
-        });
-      });
-      
-      // Add current user input
-      messages.push({ role: 'user', content: input.trim() });
-      
-      let searchResults: any[] = [];
-      let searchUrls: string[] = [];
-      let searchQuery = '';
-      
-      // Check if web search is enabled and needed
-      const isSearchEnabled = await databaseService.getUserSetting('search_enabled', true);
-      if (isSearchEnabled && searchService.isConfigured() && searchService.shouldSearchForQuery(input)) {
-        try {
-          console.log('Performing web search for query:', input);
-          const searchResponse = await searchService.search(input, { maxResults: 5 });
-          searchResults = searchResponse.results;
-          searchQuery = searchResponse.query;
-          searchUrls = extractUrlsFromSearchResults(searchResults);
-          
-          // Prepend search results to the conversation
-          const searchContext = searchService.formatSearchResults(searchResponse);
-          messages.splice(1, 0, { 
-            role: 'system', 
-            content: `CURRENT WEB SEARCH RESULTS:\n\n${searchContext}\n\nUse this information to provide more accurate and up-to-date responses. Reference the search results naturally when relevant.` 
-          });
-          
-          console.log('Web search completed, results integrated into conversation context');
-          
-          toast({
-            title: "Web Search Performed",
-            description: `Found ${searchResults.length} relevant results for your query`,
-          });
-        } catch (searchError) {
-          console.error('Web search failed:', searchError);
-          toast({
-            title: "Search Failed",
-            description: "Web search encountered an error but continuing without search results.",
-            variant: "destructive",
-          });
-        }
-      }
-      
-      const response = await aiService.chat(messages, activeAgent);
-      
-      if (!response.content) {
-        throw new Error('Received empty response from AI service');
-      }
-
-      // Embed search URLs in the response content
-      const enhancedContent = embedSearchUrls(response.content, searchUrls);
-      
-      const aiMessage = {
-        content: enhancedContent,
-        isUser: false,
-        agentType: activeAgent,
-        timestamp: Date.now(),
-        searchResults: searchResults.length > 0 ? searchResults : undefined
-      };
-      
-      // Add AI response to conversation
-      setConversationMessages(prev => [...prev, aiMessage]);
-      setOutput(enhancedContent);
-      
-      // Save conversation to database
-      await databaseService.saveConversation({
-        user_input: input.trim(),
-        agent_type: activeAgent,
-        ai_output: enhancedContent,
-        metadata: {
-          hasCodeSnippets: response.content.includes('```'),
-          searchResults: searchResults.length > 0 ? searchResults : undefined,
-          processingTime: Date.now() - userMessage.timestamp
-        }
-      });
-      
-      const completionMessage = searchResults.length > 0 
-        ? `Successfully processed with ${agents.find(a => a.id === activeAgent)?.name} (with web search)`
-        : `Successfully processed with ${agents.find(a => a.id === activeAgent)?.name}`;
-      
-      toast({
-        title: "Processing Complete",
-        description: completionMessage,
-      });
-      
-      // Clear input for next message in conversation
-      setInput('');
-      
-      console.log('AI processing completed successfully');
-      
-    } catch (error) {
-      console.error('AI Processing Error:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      const errorOutput = `❌ Error: ${errorMessage}\n\nPlease check your AI configuration and try again.`;
-      
-      const errorAiMessage = {
-        content: errorOutput,
-        isUser: false,
-        agentType: activeAgent,
-        timestamp: Date.now()
-      };
-      
-      setConversationMessages(prev => [...prev, errorAiMessage]);
-      setOutput(errorOutput);
-      
-      toast({
-        title: "Processing Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-
-      // If it's a configuration issue, suggest opening config
-      if (errorMessage.includes('configured') || errorMessage.includes('API key')) {
-        setTimeout(() => {
-          toast({
-            title: "Configuration Needed",
-            description: "Click the AI Config button to update your settings.",
-          });
-        }, 2000);
-      }
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const clearConversation = () => {
-    setConversationMessages([]);
-    setOutput('');
-    setInput('');
-  };
-
-  // Check if AI is configured on component mount
-  React.useEffect(() => {
-    if (!aiService.isConfigured()) {
-      console.log('AI service not configured, showing setup reminder');
-      setTimeout(() => {
-        toast({
-          title: "Setup Required",
-          description: "Please configure your AI settings to start using the coding assistant.",
-        });
-      }, 1000);
-    }
-  }, [toast]);
-
-  const renderActiveAgent = () => {
-    const commonProps = { input, setOutput, isProcessing, setIsProcessing };
-    
-    switch (activeAgent) {
-      case 'orchestrator':
-        return <AgentOrchestrator {...commonProps} />;
-      case 'code-gen':
-        return <CodeGenerationAgent {...commonProps} />;
-      case 'bug-fix':
-        return <BugFixAgent {...commonProps} />;
-      case 'refactor':
-        return <RefactorAgent {...commonProps} />;
-      case 'test-gen':
-        return <TestGeneratorAgent {...commonProps} />;
-      case 'docs':
-        return <DocumentationAgent {...commonProps} />;
-      case 'github':
-        return <GitHubAgent {...commonProps} />;
-      case 'search':
-        return <SemanticSearchAgent {...commonProps} />;
-      case 'mcp':
-        return <MCPAnalysisAgent {...commonProps} />;
-      default:
-        return <AgentOrchestrator {...commonProps} />;
-    }
-  };
+    checkAuth();
+  }, [navigate]);
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-      toast({
-        title: "Signed Out",
-        description: "You have been signed out successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Sign Out Failed",
-        description: "Failed to sign out",
-        variant: "destructive",
-      });
-    }
+    await authService.signOut();
+    navigate('/auth');
+  };
+
+  const handleConversationSelect = (conversationId: string) => {
+    setSelectedConversationId(conversationId);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Bot className="h-8 w-8 text-blue-600" />
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  CodeCraft AI
-                </h1>
+    <div className="flex h-screen bg-background">
+      {/* Chat Interface */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="border-b bg-card px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Bot className="h-6 w-6 text-primary" />
+                <h1 className="text-xl font-semibold">AI Agent Orchestrator</h1>
               </div>
-              <Badge variant="outline" className="hidden sm:inline-flex">
-                Multi-Agent Coding Assistant
-              </Badge>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              {user && (
-                <div className="flex items-center space-x-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {user.email}
-                  </Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSignOut}
-                    className="flex items-center gap-2"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sign Out
-                  </Button>
-                </div>
-              )}
-              
-              <Button
-                variant="outline"
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
                 size="sm"
-                onClick={() => setShowSettings(!showSettings)}
-                className="flex items-center gap-2"
+                onClick={() => setShowSettings(true)}
               >
-                <Settings className="h-4 w-4" />
+                <Settings className="h-4 w-4 mr-2" />
                 Settings
               </Button>
-              
-              <Button
-                variant="outline"
+              <Button 
+                variant="outline" 
                 size="sm"
-                onClick={() => setShowHistory(!showHistory)}
-                className="flex items-center gap-2"
+                onClick={handleSignOut}
               >
-                <History className="h-4 w-4" />
-                History
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
               </Button>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Agent Selection Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-8">
-          {agents.map((agent) => {
-            const IconComponent = agent.icon;
-            return (
-              <Card 
-                key={agent.id}
-                className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
-                  activeAgent === agent.id 
-                    ? 'border-blue-500 shadow-lg scale-105' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => setActiveAgent(agent.id)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${agent.color} text-white`}>
-                      <IconComponent className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-sm font-semibold">{agent.name}</CardTitle>
-                    </div>
-                  </div>
-                  <CardDescription className="text-xs leading-relaxed">
-                    {agent.description}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            );
-          })}
-        </div>
+        {/* Main Content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Chat Area */}
+          <div className="flex-1 flex flex-col">
+            <InteractiveChatInterface
+              currentAgent={currentAgent}
+              onAgentChange={setCurrentAgent}
+              onConversationSelect={handleConversationSelect}
+              selectedConversationId={selectedConversationId}
+            />
+          </div>
 
-        {/* Conditional Interface Based on Mode */}
-        {isInteractiveMode ? (
-          <InteractiveChatInterface 
-            activeAgent={activeAgent}
-            agentName={agents.find(a => a.id === activeAgent)?.name || 'Agent'}
-          />
-        ) : (
-          <Tabs defaultValue="chat" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="chat" className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Chat Interface
-              </TabsTrigger>
-              <TabsTrigger value="conversation" className="flex items-center gap-2">
-                <History className="h-4 w-4" />
-                Conversation View
-              </TabsTrigger>
-              <TabsTrigger value="connectivity" className="flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                System Status
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="chat" className="space-y-6">
-              {/* Original Interface */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Input Section */}
-                <Card className="h-fit">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Code className="h-5 w-5" />
-                      Input
-                    </CardTitle>
-                    <CardDescription>
-                      Describe your coding task or paste your code
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Textarea
-                      placeholder="Enter your request, code snippet, or question here..."
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      className="min-h-[200px] font-mono text-sm"
-                    />
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleProcess} 
-                        className="flex-1" 
-                        disabled={!input.trim() || isProcessing || !aiService.isConfigured()}
-                      >
-                        {isProcessing ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Process with {agents.find(a => a.id === activeAgent)?.name}
-                          </>
-                        )}
-                      </Button>
-                      <Button 
-                        onClick={clearConversation} 
-                        variant="outline"
-                        disabled={conversationMessages.length === 0}
-                      >
-                        Clear
-                      </Button>
-                    </div>
-                    {!aiService.isConfigured() && (
-                      <p className="text-sm text-red-600 text-center">
-                        ⚠️ Please configure AI settings first
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Output Section with Copy Button */}
-                <Card className="h-fit">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Bot className="h-5 w-5" />
-                        <CardTitle>Output</CardTitle>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCopyOutput}
-                        disabled={!output}
-                        className="flex items-center gap-1"
-                      >
-                        {copied ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                        {copied ? 'Copied!' : 'Copy'}
-                      </Button>
-                    </div>
-                    <CardDescription>
-                      Agent response and generated code
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="bg-gray-50 rounded-lg p-4 min-h-[200px] font-mono text-sm whitespace-pre-wrap">
-                      {output || 'Output will appear here...'}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="conversation" className="space-y-6">
-              {/* Enhanced Conversation View */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5" />
-                      <CardTitle>Conversation</CardTitle>
-                    </div>
-                    <Button 
-                      onClick={clearConversation} 
-                      variant="outline" 
+          {/* Side Panel */}
+          <div className="w-80 border-l bg-card flex flex-col">
+            {showAgentOrchestrator ? (
+              <AgentOrchestrator 
+                onClose={() => setShowAgentOrchestrator(false)}
+                onAgentSelect={(agent) => {
+                  setCurrentAgent(agent);
+                  setShowAgentOrchestrator(false);
+                }}
+              />
+            ) : (
+              <>
+                <div className="p-4 border-b">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium">Agent Selection</h3>
+                    <Button
+                      variant="outline"
                       size="sm"
-                      disabled={conversationMessages.length === 0}
+                      onClick={() => setShowAgentOrchestrator(true)}
                     >
-                      Clear Conversation
+                      <Bot className="h-4 w-4 mr-2" />
+                      Orchestrator
                     </Button>
                   </div>
-                  <CardDescription>
-                    Enhanced view with code highlighting and search integration
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                    {conversationMessages.length === 0 ? (
-                      <div className="text-center text-muted-foreground py-12">
-                        <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                        <p className="text-lg mb-2">Start a conversation</p>
-                        <p className="text-sm">Switch to the Chat Interface tab to begin</p>
-                      </div>
-                    ) : (
-                      conversationMessages.map((message, index) => (
-                        <EnhancedMessageDisplay
-                          key={index}
-                          content={message.content}
-                          isUser={message.isUser}
-                          agentType={message.agentType}
-                          timestamp={message.timestamp}
-                          hasSearchResults={!!message.searchResults}
-                        />
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  <Select value={currentAgent} onValueChange={setCurrentAgent}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an agent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">💬 General Chat</SelectItem>
+                      <SelectItem value="code">💻 Code Generation</SelectItem>
+                      <SelectItem value="refactor">🔄 Code Refactor</SelectItem>
+                      <SelectItem value="bug-fix">🐛 Bug Fix</SelectItem>
+                      <SelectItem value="test">🧪 Test Generator</SelectItem>
+                      <SelectItem value="documentation">📚 Documentation</SelectItem>
+                      <SelectItem value="semantic-search">🔍 Semantic Search</SelectItem>
+                      <SelectItem value="mcp-analysis">🔬 MCP Analysis</SelectItem>
+                      <SelectItem value="github">🐙 GitHub Agent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <TabsContent value="connectivity" className="space-y-6">
-              {/* Connectivity Checker */}
-              <ConnectivityChecker />
-            </TabsContent>
-          </Tabs>
-        )}
-
-        {/* Active Agent Component (only show in conventional mode) */}
-        {!isInteractiveMode && (
-          <div className="mt-8">
-            {renderActiveAgent()}
-          </div>
-        )}
-
-        {/* Features Section */}
-        <div className="mt-12 text-center">
-          <h2 className="text-2xl font-bold mb-6">Agent Capabilities</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🧠 Intelligent Routing</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Automatically selects the best agent for your specific coding task
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">💾 Persistent Memory</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Stores conversations and learns from your interactions
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🌐 Web Search</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Integrates real-time web search for up-to-date information
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">💬 Interactive Chat</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Context-aware conversational interface with memory
-                </p>
-              </CardContent>
-            </Card>
+                <div className="flex-1 overflow-auto">
+                  <ConversationHistory
+                    onConversationSelect={handleConversationSelect}
+                    selectedConversationId={selectedConversationId}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
-                <Button variant="ghost" onClick={() => setShowSettings(false)}>
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
+      {/* Settings Dialog */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Settings
+            </DialogTitle>
+            <DialogDescription>
+              Configure your AI agents, search settings, and database connection.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-auto">
+            <Tabs defaultValue="ai" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="ai">AI Configuration</TabsTrigger>
+                <TabsTrigger value="search">Search Settings</TabsTrigger>
+                <TabsTrigger value="database">Database Settings</TabsTrigger>
+              </TabsList>
               
-              <Tabs defaultValue="ai" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="ai">AI Models</TabsTrigger>
-                  <TabsTrigger value="search">Web Search</TabsTrigger>
-                  <TabsTrigger value="database">Database</TabsTrigger>
-                  <TabsTrigger value="general">General</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="ai" className="mt-6">
-                  <AIConfiguration />
-                </TabsContent>
-                
-                <TabsContent value="search" className="mt-6">
-                  <SearchSettings isOpen={true} onClose={() => {}} />
-                </TabsContent>
-                
-                <TabsContent value="database" className="mt-6">
-                  <DatabaseSettings />
-                </TabsContent>
-                
-                <TabsContent value="general" className="mt-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>General Settings</CardTitle>
-                      <CardDescription>
-                        Configure general application preferences
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <Label>Dark Mode</Label>
-                            <p className="text-sm text-muted-foreground">
-                              Toggle between light and dark themes
-                            </p>
-                          </div>
-                          <Switch />
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <Label>Show Notifications</Label>
-                            <p className="text-sm text-muted-foreground">
-                              Enable desktop notifications for important events
-                            </p>
-                          </div>
-                          <Switch />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
+              <TabsContent value="ai" className="mt-6">
+                <AIConfiguration />
+              </TabsContent>
+              
+              <TabsContent value="search" className="mt-6">
+                <SearchSettings />
+              </TabsContent>
+              
+              <TabsContent value="database" className="mt-6">
+                <DatabaseSettings />
+              </TabsContent>
+            </Tabs>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Modals */}
-      <AIConfiguration 
-        isOpen={showAIConfig} 
-        onClose={() => setShowAIConfig(false)} 
-      />
-      
-      <ConversationHistory
-        isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
-        currentAgent={activeAgent}
-      />
-      
-      <SearchSettings
-        isOpen={showSearchSettings}
-        onClose={() => setShowSearchSettings(false)}
-      />
+      {/* AI Configuration Dialog */}
+      <Dialog open={showAIConfig} onOpenChange={setShowAIConfig}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>AI Model Configuration</DialogTitle>
+            <DialogDescription>
+              Configure your AI model settings and API keys.
+            </DialogDescription>
+          </DialogHeader>
+          <AIConfiguration />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

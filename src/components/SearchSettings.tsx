@@ -11,12 +11,7 @@ import { searchService } from '@/services/searchService';
 import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
 
-interface SearchSettingsProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const SearchSettings: React.FC<SearchSettingsProps> = ({ isOpen, onClose }) => {
+const SearchSettings: React.FC = () => {
   const [searchEnabled, setSearchEnabled] = useState(true);
   const [tavilyApiKey, setTavilyApiKey] = useState('');
   const [maxResults, setMaxResults] = useState(5);
@@ -25,11 +20,9 @@ const SearchSettings: React.FC<SearchSettingsProps> = ({ isOpen, onClose }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (isOpen) {
-      loadSettings();
-      checkConnection();
-    }
-  }, [isOpen]);
+    loadSettings();
+    checkConnection();
+  }, []);
 
   const loadSettings = async () => {
     try {
@@ -108,103 +101,89 @@ const SearchSettings: React.FC<SearchSettingsProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <Globe className="h-6 w-6 text-blue-600" />
+        <h3 className="text-lg font-semibold">Web Search Settings</h3>
+      </div>
+      
+      <div className="space-y-4">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Globe className="h-6 w-6 text-blue-600" />
-              <CardTitle>Web Search Settings</CardTitle>
-            </div>
-            <Button variant="outline" onClick={onClose}>
-              <X className="h-4 w-4 mr-2" />
-              Close
-            </Button>
-          </div>
-          <CardDescription>
-            Configure web search integration
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="search-enabled">Enable Web Search</Label>
-              <Switch
-                id="search-enabled"
-                checked={searchEnabled}
-                onCheckedChange={handleSearchEnabledChange}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Enable real-time web search for up-to-date information
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tavily-api-key">Tavily API Key</Label>
-            <Input
-              id="tavily-api-key"
-              placeholder="sk_..."
-              type="password"
-              value={tavilyApiKey}
-              onChange={handleApiKeyChange}
+            <Label htmlFor="search-enabled">Enable Web Search</Label>
+            <Switch
+              id="search-enabled"
+              checked={searchEnabled}
+              onCheckedChange={handleSearchEnabledChange}
             />
-            <p className="text-sm text-muted-foreground">
-              Enter your Tavily API key to enable web search
-            </p>
-            {!tavilyApiKey.trim() && (
-              <Badge variant="destructive" className="text-xs">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                API Key Required
-              </Badge>
-            )}
-            {tavilyApiKey.trim() && isConnected && (
-              <Badge variant="secondary" className="text-xs">
-                <Check className="h-3 w-3 mr-1" />
-                Connected to Tavily API
-              </Badge>
-            )}
-            {tavilyApiKey.trim() && !isConnected && (
-              <Badge variant="outline" className="text-xs text-red-500">
-                <Zap className="h-3 w-3 mr-1" />
-                Connection Failed
-              </Badge>
-            )}
           </div>
+          <p className="text-sm text-muted-foreground">
+            Enable real-time web search for up-to-date information
+          </p>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="max-results">Max Search Results</Label>
-            <Input
-              id="max-results"
-              type="number"
-              min="1"
-              max="10"
-              value={maxResults.toString()}
-              onChange={handleMaxResultsChange}
-            />
-            <p className="text-sm text-muted-foreground">
-              Maximum number of search results to retrieve (1-10)
-            </p>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="tavily-api-key">Tavily API Key</Label>
+          <Input
+            id="tavily-api-key"
+            placeholder="sk_..."
+            type="password"
+            value={tavilyApiKey}
+            onChange={handleApiKeyChange}
+          />
+          <p className="text-sm text-muted-foreground">
+            Enter your Tavily API key to enable web search
+          </p>
+          {!tavilyApiKey.trim() && (
+            <Badge variant="destructive" className="text-xs">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              API Key Required
+            </Badge>
+          )}
+          {tavilyApiKey.trim() && isConnected && (
+            <Badge variant="secondary" className="text-xs">
+              <Check className="h-3 w-3 mr-1" />
+              Connected to Tavily API
+            </Badge>
+          )}
+          {tavilyApiKey.trim() && !isConnected && (
+            <Badge variant="outline" className="text-xs text-red-500">
+              <Zap className="h-3 w-3 mr-1" />
+              Connection Failed
+            </Badge>
+          )}
+        </div>
 
-          <Button onClick={saveSettings} disabled={loading} className="w-full">
-            {loading ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Key className="h-4 w-4 mr-2" />
-                Save Settings
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
+        <div className="space-y-2">
+          <Label htmlFor="max-results">Max Search Results</Label>
+          <Input
+            id="max-results"
+            type="number"
+            min="1"
+            max="10"
+            value={maxResults.toString()}
+            onChange={handleMaxResultsChange}
+          />
+          <p className="text-sm text-muted-foreground">
+            Maximum number of search results to retrieve (1-10)
+          </p>
+        </div>
+
+        <Button onClick={saveSettings} disabled={loading} className="w-full">
+          {loading ? (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Key className="h-4 w-4 mr-2" />
+              Save Settings
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 };
