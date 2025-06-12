@@ -31,6 +31,7 @@ const Index = () => {
   const [showAIConfig, setShowAIConfig] = useState(false);
   const [showDatabaseSettings, setShowDatabaseSettings] = useState(false);
   const [showAgentOrchestrator, setShowAgentOrchestrator] = useState(false);
+  const [showConversationHistory, setShowConversationHistory] = useState(false);
   const [currentAgent, setCurrentAgent] = useState("general");
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
@@ -52,6 +53,21 @@ const Index = () => {
 
   const handleConversationSelect = (conversationId: string) => {
     setSelectedConversationId(conversationId);
+  };
+
+  const getAgentName = (agentType: string) => {
+    const agentNames: Record<string, string> = {
+      general: 'General Chat',
+      code: 'Code Generation',
+      refactor: 'Code Refactor',
+      'bug-fix': 'Bug Fix',
+      test: 'Test Generator',
+      documentation: 'Documentation',
+      'semantic-search': 'Semantic Search',
+      github: 'GitHub Agent',
+      'mcp-analysis': 'MCP Analysis'
+    };
+    return agentNames[agentType] || 'General Chat';
   };
 
   return (
@@ -93,23 +109,32 @@ const Index = () => {
           {/* Chat Area */}
           <div className="flex-1 flex flex-col">
             <InteractiveChatInterface
-              currentAgent={currentAgent}
-              onAgentChange={setCurrentAgent}
-              onConversationSelect={handleConversationSelect}
-              selectedConversationId={selectedConversationId}
+              activeAgent={currentAgent}
+              agentName={getAgentName(currentAgent)}
             />
           </div>
 
           {/* Side Panel */}
           <div className="w-80 border-l bg-card flex flex-col">
             {showAgentOrchestrator ? (
-              <AgentOrchestrator 
-                onClose={() => setShowAgentOrchestrator(false)}
-                onAgentSelect={(agent) => {
-                  setCurrentAgent(agent);
-                  setShowAgentOrchestrator(false);
-                }}
-              />
+              <div className="flex-1 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium">Agent Orchestrator</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAgentOrchestrator(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+                <AgentOrchestrator 
+                  input=""
+                  setOutput={() => {}}
+                  isProcessing={false}
+                  setIsProcessing={() => {}}
+                />
+              </div>
             ) : (
               <>
                 <div className="p-4 border-b">
@@ -143,10 +168,21 @@ const Index = () => {
                 </div>
 
                 <div className="flex-1 overflow-auto">
-                  <ConversationHistory
-                    onConversationSelect={handleConversationSelect}
-                    selectedConversationId={selectedConversationId}
-                  />
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium">Conversation History</h3>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowConversationHistory(true)}
+                      >
+                        View All
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Click "View All" to see your conversation history
+                    </p>
+                  </div>
                 </div>
               </>
             )}
@@ -190,6 +226,13 @@ const Index = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Conversation History Dialog */}
+      <ConversationHistory
+        isOpen={showConversationHistory}
+        onClose={() => setShowConversationHistory(false)}
+        currentAgent={currentAgent}
+      />
 
       {/* AI Configuration Dialog */}
       <Dialog open={showAIConfig} onOpenChange={setShowAIConfig}>
