@@ -478,256 +478,258 @@ CONTEXT AWARENESS:
       </header>
 
       {/* Agent Selection Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-8">
-        {agents.map((agent) => {
-          const IconComponent = agent.icon;
-          return (
-            <Card 
-              key={agent.id}
-              className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
-                activeAgent === agent.id 
-                  ? 'border-blue-500 shadow-lg scale-105' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setActiveAgent(agent.id)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${agent.color} text-white`}>
-                    <IconComponent className="h-5 w-5" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-8">
+          {agents.map((agent) => {
+            const IconComponent = agent.icon;
+            return (
+              <Card 
+                key={agent.id}
+                className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
+                  activeAgent === agent.id 
+                    ? 'border-blue-500 shadow-lg scale-105' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setActiveAgent(agent.id)}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${agent.color} text-white`}>
+                      <IconComponent className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm font-semibold">{agent.name}</CardTitle>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-sm font-semibold">{agent.name}</CardTitle>
-                  </div>
-                </div>
-                <CardDescription className="text-xs leading-relaxed">
-                  {agent.description}
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Conditional Interface Based on Mode */}
-      {isInteractiveMode ? (
-        <InteractiveChatInterface 
-          activeAgent={activeAgent}
-          agentName={agents.find(a => a.id === activeAgent)?.name || 'Agent'}
-        />
-      ) : (
-        <Tabs defaultValue="chat" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Chat Interface
-            </TabsTrigger>
-            <TabsTrigger value="conversation" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Conversation View
-            </TabsTrigger>
-            <TabsTrigger value="connectivity" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              System Status
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="chat" className="space-y-6">
-            {/* Original Interface */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Input Section */}
-              <Card className="h-fit">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Code className="h-5 w-5" />
-                    Input
-                  </CardTitle>
-                  <CardDescription>
-                    Describe your coding task or paste your code
+                  <CardDescription className="text-xs leading-relaxed">
+                    {agent.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <Textarea
-                    placeholder="Enter your request, code snippet, or question here..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    className="min-h-[200px] font-mono text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleProcess} 
-                      className="flex-1" 
-                      disabled={!input.trim() || isProcessing || !aiService.isConfigured()}
-                    >
-                      {isProcessing ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          Process with {agents.find(a => a.id === activeAgent)?.name}
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      onClick={clearConversation} 
-                      variant="outline"
-                      disabled={conversationMessages.length === 0}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                  {!aiService.isConfigured() && (
-                    <p className="text-sm text-red-600 text-center">
-                      ⚠️ Please configure AI settings first
-                    </p>
-                  )}
-                </CardContent>
               </Card>
+            );
+          })}
+        </div>
 
-              {/* Output Section with Copy Button */}
-              <Card className="h-fit">
+        {/* Conditional Interface Based on Mode */}
+        {isInteractiveMode ? (
+          <InteractiveChatInterface 
+            activeAgent={activeAgent}
+            agentName={agents.find(a => a.id === activeAgent)?.name || 'Agent'}
+          />
+        ) : (
+          <Tabs defaultValue="chat" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="chat" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Chat Interface
+              </TabsTrigger>
+              <TabsTrigger value="conversation" className="flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Conversation View
+              </TabsTrigger>
+              <TabsTrigger value="connectivity" className="flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                System Status
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="chat" className="space-y-6">
+              {/* Original Interface */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Input Section */}
+                <Card className="h-fit">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Code className="h-5 w-5" />
+                      Input
+                    </CardTitle>
+                    <CardDescription>
+                      Describe your coding task or paste your code
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Textarea
+                      placeholder="Enter your request, code snippet, or question here..."
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      className="min-h-[200px] font-mono text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleProcess} 
+                        className="flex-1" 
+                        disabled={!input.trim() || isProcessing || !aiService.isConfigured()}
+                      >
+                        {isProcessing ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Process with {agents.find(a => a.id === activeAgent)?.name}
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        onClick={clearConversation} 
+                        variant="outline"
+                        disabled={conversationMessages.length === 0}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                    {!aiService.isConfigured() && (
+                      <p className="text-sm text-red-600 text-center">
+                        ⚠️ Please configure AI settings first
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Output Section with Copy Button */}
+                <Card className="h-fit">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Bot className="h-5 w-5" />
+                        <CardTitle>Output</CardTitle>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyOutput}
+                        disabled={!output}
+                        className="flex items-center gap-1"
+                      >
+                        {copied ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                        {copied ? 'Copied!' : 'Copy'}
+                      </Button>
+                    </div>
+                    <CardDescription>
+                      Agent response and generated code
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-gray-50 rounded-lg p-4 min-h-[200px] font-mono text-sm whitespace-pre-wrap">
+                      {output || 'Output will appear here...'}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="conversation" className="space-y-6">
+              {/* Enhanced Conversation View */}
+              <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Bot className="h-5 w-5" />
-                      <CardTitle>Output</CardTitle>
+                      <MessageSquare className="h-5 w-5" />
+                      <CardTitle>Conversation</CardTitle>
                     </div>
-                    <Button
-                      variant="outline"
+                    <Button 
+                      onClick={clearConversation} 
+                      variant="outline" 
                       size="sm"
-                      onClick={handleCopyOutput}
-                      disabled={!output}
-                      className="flex items-center gap-1"
+                      disabled={conversationMessages.length === 0}
                     >
-                      {copied ? (
-                        <Check className="h-3 w-3 text-green-600" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                      {copied ? 'Copied!' : 'Copy'}
+                      Clear Conversation
                     </Button>
                   </div>
                   <CardDescription>
-                    Agent response and generated code
+                    Enhanced view with code highlighting and search integration
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-gray-50 rounded-lg p-4 min-h-[200px] font-mono text-sm whitespace-pre-wrap">
-                    {output || 'Output will appear here...'}
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                    {conversationMessages.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-12">
+                        <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg mb-2">Start a conversation</p>
+                        <p className="text-sm">Switch to the Chat Interface tab to begin</p>
+                      </div>
+                    ) : (
+                      conversationMessages.map((message, index) => (
+                        <EnhancedMessageDisplay
+                          key={index}
+                          content={message.content}
+                          isUser={message.isUser}
+                          agentType={message.agentType}
+                          timestamp={message.timestamp}
+                          hasSearchResults={!!message.searchResults}
+                        />
+                      ))
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="conversation" className="space-y-6">
-            {/* Enhanced Conversation View */}
+            <TabsContent value="connectivity" className="space-y-6">
+              {/* Connectivity Checker */}
+              <ConnectivityChecker />
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {/* Active Agent Component (only show in conventional mode) */}
+        {!isInteractiveMode && (
+          <div className="mt-8">
+            {renderActiveAgent()}
+          </div>
+        )}
+
+        {/* Features Section */}
+        <div className="mt-12 text-center">
+          <h2 className="text-2xl font-bold mb-6">Agent Capabilities</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    <CardTitle>Conversation</CardTitle>
-                  </div>
-                  <Button 
-                    onClick={clearConversation} 
-                    variant="outline" 
-                    size="sm"
-                    disabled={conversationMessages.length === 0}
-                  >
-                    Clear Conversation
-                  </Button>
-                </div>
-                <CardDescription>
-                  Enhanced view with code highlighting and search integration
-                </CardDescription>
+                <CardTitle className="text-lg">🧠 Intelligent Routing</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                  {conversationMessages.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-12">
-                      <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg mb-2">Start a conversation</p>
-                      <p className="text-sm">Switch to the Chat Interface tab to begin</p>
-                    </div>
-                  ) : (
-                    conversationMessages.map((message, index) => (
-                      <EnhancedMessageDisplay
-                        key={index}
-                        content={message.content}
-                        isUser={message.isUser}
-                        agentType={message.agentType}
-                        timestamp={message.timestamp}
-                        hasSearchResults={!!message.searchResults}
-                      />
-                    ))
-                  )}
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Automatically selects the best agent for your specific coding task
+                </p>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="connectivity" className="space-y-6">
-            {/* Connectivity Checker */}
-            <ConnectivityChecker />
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {/* Active Agent Component (only show in conventional mode) */}
-      {!isInteractiveMode && (
-        <div className="mt-8">
-          {renderActiveAgent()}
-        </div>
-      )}
-
-      {/* Features Section */}
-      <div className="mt-12 text-center">
-        <h2 className="text-2xl font-bold mb-6">Agent Capabilities</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">🧠 Intelligent Routing</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Automatically selects the best agent for your specific coding task
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">💾 Persistent Memory</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Stores conversations and learns from your interactions
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">🌐 Web Search</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Integrates real-time web search for up-to-date information
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">💬 Interactive Chat</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Context-aware conversational interface with memory
-              </p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">💾 Persistent Memory</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Stores conversations and learns from your interactions
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">🌐 Web Search</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Integrates real-time web search for up-to-date information
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">💬 Interactive Chat</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Context-aware conversational interface with memory
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
 
@@ -752,11 +754,11 @@ CONTEXT AWARENESS:
                 </TabsList>
                 
                 <TabsContent value="ai" className="mt-6">
-                  <AIConfiguration isOpen={true} onClose={() => {}} />
+                  <AIConfiguration />
                 </TabsContent>
                 
                 <TabsContent value="search" className="mt-6">
-                  <SearchSettings isOpen={true} onClose={() => {}} />
+                  <SearchSettings />
                 </TabsContent>
                 
                 <TabsContent value="database" className="mt-6">

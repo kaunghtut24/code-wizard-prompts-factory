@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,17 +9,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Settings, Key, Globe, Brain, Save, TestTube, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { aiService } from '@/services/aiService';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 interface AIConfigurationProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) => {
@@ -153,7 +145,9 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
       });
       
       setConnectionStatus('success');
-      setTimeout(() => onClose(), 1500);
+      if (onClose) {
+        setTimeout(() => onClose(), 1500);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setConnectionError(errorMessage);
@@ -233,190 +227,189 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
   const effectiveModel = getEffectiveModel();
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-6 w-6" />
-            AI Model Configuration
-          </DialogTitle>
-          <DialogDescription>
-            Configure your AI provider and model settings for the coding assistant
-          </DialogDescription>
-        </DialogHeader>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="h-6 w-6" />
+          AI Model Configuration
+        </CardTitle>
+        <CardDescription>
+          Configure your AI provider and model settings for the coding assistant
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Connection Status Alert */}
+        {connectionStatus === 'error' && connectionError && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>{connectionError}</AlertDescription>
+          </Alert>
+        )}
         
-        <div className="space-y-6">
-          {/* Connection Status Alert */}
-          {connectionStatus === 'error' && connectionError && (
-            <Alert variant="destructive">
-              <XCircle className="h-4 w-4" />
-              <AlertDescription>{connectionError}</AlertDescription>
-            </Alert>
+        {connectionStatus === 'success' && (
+          <Alert className="border-green-200 bg-green-50">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              Connection test successful! Configuration is working properly.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Provider Selection */}
+        <div className="space-y-2">
+          <Label htmlFor="provider">AI Provider</Label>
+          <Select value={provider} onValueChange={handleProviderChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select AI provider" />
+            </SelectTrigger>
+            <SelectContent>
+              {providers.map((provider) => (
+                <SelectItem key={provider.id} value={provider.id}>
+                  {provider.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* API Key */}
+        <div className="space-y-2">
+          <Label htmlFor="apiKey" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            API Key
+          </Label>
+          <Input
+            id="apiKey"
+            type="password"
+            placeholder="Enter your API key"
+            value={apiKey}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              setConnectionStatus('idle');
+              setConnectionError('');
+            }}
+          />
+          {provider === 'openai' && (
+            <p className="text-xs text-muted-foreground">
+              Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">OpenAI Platform</a>
+            </p>
           )}
+        </div>
+
+        {/* Base URL */}
+        <div className="space-y-2">
+          <Label htmlFor="baseUrl" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Base URL
+          </Label>
+          <Input
+            id="baseUrl"
+            placeholder="API base URL"
+            value={baseUrl}
+            onChange={(e) => {
+              setBaseUrl(e.target.value);
+              setConnectionStatus('idle');
+              setConnectionError('');
+            }}
+          />
+        </div>
+
+        {/* Model Selection */}
+        <div className="space-y-4">
+          <Label className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            Model Configuration
+          </Label>
           
-          {connectionStatus === 'success' && (
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                Connection test successful! Configuration is working properly.
-              </AlertDescription>
-            </Alert>
+          {/* Popular Models Quick Select */}
+          {popularModels[provider as keyof typeof popularModels]?.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Popular Models (Quick Select)</Label>
+              <div className="flex flex-wrap gap-2">
+                {popularModels[provider as keyof typeof popularModels].map((model) => (
+                  <Button
+                    key={model}
+                    variant={selectedModel === model ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleModelSelection(model)}
+                    className="text-xs"
+                  >
+                    {model}
+                  </Button>
+                ))}
+              </div>
+            </div>
           )}
 
-          {/* Provider Selection */}
+          {/* Custom Model Input */}
           <div className="space-y-2">
-            <Label htmlFor="provider">AI Provider</Label>
-            <Select value={provider} onValueChange={handleProviderChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select AI provider" />
-              </SelectTrigger>
-              <SelectContent>
-                {providers.map((provider) => (
-                  <SelectItem key={provider.id} value={provider.id}>
-                    {provider.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* API Key */}
-          <div className="space-y-2">
-            <Label htmlFor="apiKey" className="flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              API Key
-            </Label>
+            <Label htmlFor="customModel" className="text-sm">Custom Model Name</Label>
             <Input
-              id="apiKey"
-              type="password"
-              placeholder="Enter your API key"
-              value={apiKey}
+              id="customModel"
+              placeholder={`Enter model name (default: ${getCurrentProvider()?.defaultModel})`}
+              value={customModel}
               onChange={(e) => {
-                setApiKey(e.target.value);
+                setCustomModel(e.target.value);
                 setConnectionStatus('idle');
                 setConnectionError('');
               }}
             />
-            {provider === 'openai' && (
-              <p className="text-xs text-muted-foreground">
-                Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">OpenAI Platform</a>
-              </p>
-            )}
-          </div>
-
-          {/* Base URL */}
-          <div className="space-y-2">
-            <Label htmlFor="baseUrl" className="flex items-center gap-2">
-              <Globe className="h-4 w-4" />
-              Base URL
-            </Label>
-            <Input
-              id="baseUrl"
-              placeholder="API base URL"
-              value={baseUrl}
-              onChange={(e) => {
-                setBaseUrl(e.target.value);
-                setConnectionStatus('idle');
-                setConnectionError('');
-              }}
-            />
-          </div>
-
-          {/* Model Selection */}
-          <div className="space-y-4">
-            <Label className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              Model Configuration
-            </Label>
-            
-            {/* Popular Models Quick Select */}
-            {popularModels[provider as keyof typeof popularModels]?.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Popular Models (Quick Select)</Label>
-                <div className="flex flex-wrap gap-2">
-                  {popularModels[provider as keyof typeof popularModels].map((model) => (
-                    <Button
-                      key={model}
-                      variant={selectedModel === model ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handleModelSelection(model)}
-                      className="text-xs"
-                    >
-                      {model}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Custom Model Input */}
-            <div className="space-y-2">
-              <Label htmlFor="customModel" className="text-sm">Custom Model Name</Label>
-              <Input
-                id="customModel"
-                placeholder={`Enter model name (default: ${getCurrentProvider()?.defaultModel})`}
-                value={customModel}
-                onChange={(e) => {
-                  setCustomModel(e.target.value);
-                  setConnectionStatus('idle');
-                  setConnectionError('');
-                }}
-              />
-              <div className="flex items-start gap-2 p-2 bg-blue-50 rounded border">
-                <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-blue-700">
-                  <p><strong>Current effective model:</strong> {effectiveModel}</p>
-                  <p className="mt-1">You can enter any model name here, including future models. The system will use the default model as fallback if the specified model is not available.</p>
-                </div>
+            <div className="flex items-start gap-2 p-2 bg-blue-50 rounded border">
+              <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-blue-700">
+                <p><strong>Current effective model:</strong> {effectiveModel}</p>
+                <p className="mt-1">You can enter any model name here, including future models. The system will use the default model as fallback if the specified model is not available.</p>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Status */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant={apiKey ? "default" : "secondary"}>
-              {apiKey ? "API Key Set" : "No API Key"}
+        {/* Status */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant={apiKey ? "default" : "secondary"}>
+            {apiKey ? "API Key Set" : "No API Key"}
+          </Badge>
+          <Badge variant={effectiveModel ? "default" : "secondary"}>
+            {effectiveModel ? `Model: ${effectiveModel}` : "No Model"}
+          </Badge>
+          <Badge variant={baseUrl ? "default" : "secondary"}>
+            {baseUrl ? "URL Configured" : "No Base URL"}
+          </Badge>
+          {connectionStatus === 'success' && (
+            <Badge variant="default" className="bg-green-600">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Connected
             </Badge>
-            <Badge variant={effectiveModel ? "default" : "secondary"}>
-              {effectiveModel ? `Model: ${effectiveModel}` : "No Model"}
-            </Badge>
-            <Badge variant={baseUrl ? "default" : "secondary"}>
-              {baseUrl ? "URL Configured" : "No Base URL"}
-            </Badge>
-            {connectionStatus === 'success' && (
-              <Badge variant="default" className="bg-green-600">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Connected
-              </Badge>
-            )}
-          </div>
+          )}
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <Button 
-              onClick={handleTestConnection} 
-              variant="outline" 
-              disabled={!apiKey || !effectiveModel || !baseUrl || isConnecting}
-              className="flex-1"
-            >
-              <TestTube className="h-4 w-4 mr-2" />
-              {isConnecting ? 'Testing...' : 'Test Connection'}
-            </Button>
-            <Button 
-              onClick={handleSaveConfiguration} 
-              disabled={!apiKey || !effectiveModel || !baseUrl || isConnecting}
-              className="flex-1"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {isConnecting ? 'Saving...' : 'Save Configuration'}
-            </Button>
+        {/* Actions */}
+        <div className="flex gap-3 pt-4">
+          <Button 
+            onClick={handleTestConnection} 
+            variant="outline" 
+            disabled={!apiKey || !effectiveModel || !baseUrl || isConnecting}
+            className="flex-1"
+          >
+            <TestTube className="h-4 w-4 mr-2" />
+            {isConnecting ? 'Testing...' : 'Test Connection'}
+          </Button>
+          <Button 
+            onClick={handleSaveConfiguration} 
+            disabled={!apiKey || !effectiveModel || !baseUrl || isConnecting}
+            className="flex-1"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isConnecting ? 'Saving...' : 'Save Configuration'}
+          </Button>
+          {onClose && (
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-          </div>
+          )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   );
 };
 
