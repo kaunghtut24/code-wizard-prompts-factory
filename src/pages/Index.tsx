@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { LogOut, Settings, Bot } from "lucide-react";
@@ -31,8 +32,6 @@ import { databaseService } from '@/services/databaseService';
 const Index = () => {
   const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
-  const [showAIConfig, setShowAIConfig] = useState(false);
-  const [showDatabaseSettings, setShowDatabaseSettings] = useState(false);
   const [showAgentOrchestrator, setShowAgentOrchestrator] = useState(false);
   const [showConversationHistory, setShowConversationHistory] = useState(false);
   const [currentAgent, setCurrentAgent] = useState("general");
@@ -245,8 +244,8 @@ const Index = () => {
 
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0">
+        <DialogContent className="max-w-5xl w-[90vw] h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
               Settings
@@ -258,28 +257,36 @@ const Index = () => {
           
           <div className="flex-1 min-h-0">
             <Tabs defaultValue="ai" className="w-full h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
-                <TabsTrigger value="ai">AI Configuration</TabsTrigger>
-                <TabsTrigger value="search">Search Settings</TabsTrigger>
-                <TabsTrigger value="database">Database Settings</TabsTrigger>
-              </TabsList>
+              <div className="px-6 py-2 border-b flex-shrink-0">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="ai">AI Configuration</TabsTrigger>
+                  <TabsTrigger value="search">Search Settings</TabsTrigger>
+                  <TabsTrigger value="database">Database Settings</TabsTrigger>
+                </TabsList>
+              </div>
               
-              <div className="flex-1 min-h-0">
-                <TabsContent value="ai" className="mt-6 h-full">
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <TabsContent value="ai" className="h-full m-0">
                   <ScrollArea className="h-full">
-                    <AIConfiguration />
+                    <div className="p-6">
+                      <AIConfiguration />
+                    </div>
                   </ScrollArea>
                 </TabsContent>
                 
-                <TabsContent value="search" className="mt-6 h-full">
+                <TabsContent value="search" className="h-full m-0">
                   <ScrollArea className="h-full">
-                    <SearchSettings />
+                    <div className="p-6">
+                      <SearchSettings />
+                    </div>
                   </ScrollArea>
                 </TabsContent>
                 
-                <TabsContent value="database" className="mt-6 h-full">
+                <TabsContent value="database" className="h-full m-0">
                   <ScrollArea className="h-full">
-                    <DatabaseSettings />
+                    <div className="p-6">
+                      <DatabaseSettings />
+                    </div>
                   </ScrollArea>
                 </TabsContent>
               </div>
@@ -294,21 +301,6 @@ const Index = () => {
         onClose={() => setShowConversationHistory(false)}
         currentAgent={currentAgent}
       />
-
-      {/* AI Configuration Dialog */}
-      <Dialog open={showAIConfig} onOpenChange={setShowAIConfig}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>AI Model Configuration</DialogTitle>
-            <DialogDescription>
-              Configure your AI model settings and API keys.
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="flex-1">
-            <AIConfiguration />
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -8,12 +8,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Globe, Check, X, AlertCircle, Key, Zap, RefreshCw } from 'lucide-react';
 import { searchService } from '@/services/searchService';
-import { databaseService } from '@/services/databaseService';
+import { supabaseDatabaseService } from '@/services/supabaseDatabaseService';
 import { useToast } from '@/hooks/use-toast';
 
 const SearchSettings: React.FC = () => {
   const [searchEnabled, setSearchEnabled] = useState(true);
-  const [tavilyApiKey, setTavilyApiKey] = useState('');
+  const [serpApiKey, setSerpApiKey] = useState('');
   const [maxResults, setMaxResults] = useState(5);
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -26,21 +26,21 @@ const SearchSettings: React.FC = () => {
 
   const loadSettings = async () => {
     try {
-      const enabled = await databaseService.getUserSetting('search_enabled', true);
-      const maxRes = await databaseService.getUserSetting('search_max_results', 5);
+      const enabled = await supabaseDatabaseService.getUserSetting('search_enabled', true);
+      const maxRes = await supabaseDatabaseService.getUserSetting('search_max_results', 5);
       setSearchEnabled(enabled);
       setMaxResults(maxRes);
 
       // Load API key from service
       const apiKey = searchService.getApiKey();
-      setTavilyApiKey(apiKey || '');
+      setSerpApiKey(apiKey || '');
     } catch (error) {
       console.error('Error loading search settings:', error);
     }
   };
 
   const checkConnection = async () => {
-    if (!tavilyApiKey.trim()) {
+    if (!serpApiKey.trim()) {
       setIsConnected(false);
       return;
     }
@@ -49,13 +49,13 @@ const SearchSettings: React.FC = () => {
       const isConfigured = searchService.isConfigured();
       setIsConnected(isConfigured);
     } catch (error) {
-      console.error('Error checking Tavily API connection:', error);
+      console.error('Error checking SerpApi connection:', error);
       setIsConnected(false);
     }
   };
 
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTavilyApiKey(e.target.value);
+    setSerpApiKey(e.target.value);
   };
 
   const handleSearchEnabledChange = (checked: boolean) => {
@@ -74,12 +74,12 @@ const SearchSettings: React.FC = () => {
       setLoading(true);
       
       // Save to database
-      await databaseService.setUserSetting('search_enabled', searchEnabled);
-      await databaseService.setUserSetting('search_max_results', maxResults);
+      await supabaseDatabaseService.setUserSetting('search_enabled', searchEnabled);
+      await supabaseDatabaseService.setUserSetting('search_max_results', maxResults);
       
       // Configure search service
-      if (tavilyApiKey.trim()) {
-        await searchService.setApiKey(tavilyApiKey.trim());
+      if (serpApiKey.trim()) {
+        await searchService.setApiKey(serpApiKey.trim());
       }
       
       toast({
@@ -102,13 +102,17 @@ const SearchSettings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Globe className="h-6 w-6 text-blue-600" />
-        <h3 className="text-lg font-semibold">Web Search Settings</h3>
-      </div>
-      
-      <div className="space-y-4">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Globe className="h-6 w-6 text-blue-600" />
+          Web Search Settings
+        </CardTitle>
+        <CardDescription>
+          Configure web search functionality with SerpApi for real-time information
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="search-enabled">Enable Web Search</Label>
@@ -124,30 +128,30 @@ const SearchSettings: React.FC = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="tavily-api-key">Tavily API Key</Label>
+          <Label htmlFor="serpapi-key">SerpApi API Key</Label>
           <Input
-            id="tavily-api-key"
-            placeholder="sk_..."
+            id="serpapi-key"
+            placeholder="Enter your SerpApi key..."
             type="password"
-            value={tavilyApiKey}
+            value={serpApiKey}
             onChange={handleApiKeyChange}
           />
           <p className="text-sm text-muted-foreground">
-            Enter your Tavily API key to enable web search
+            Get your API key from <a href="https://serpapi.com/manage-api-key" target="_blank" rel="noopener noreferrer" className="underline text-blue-600">SerpApi Dashboard</a>
           </p>
-          {!tavilyApiKey.trim() && (
+          {!serpApiKey.trim() && (
             <Badge variant="destructive" className="text-xs">
               <AlertCircle className="h-3 w-3 mr-1" />
               API Key Required
             </Badge>
           )}
-          {tavilyApiKey.trim() && isConnected && (
+          {serpApiKey.trim() && isConnected && (
             <Badge variant="secondary" className="text-xs">
               <Check className="h-3 w-3 mr-1" />
-              Connected to Tavily API
+              Connected to SerpApi
             </Badge>
           )}
-          {tavilyApiKey.trim() && !isConnected && (
+          {serpApiKey.trim() && !isConnected && (
             <Badge variant="outline" className="text-xs text-red-500">
               <Zap className="h-3 w-3 mr-1" />
               Connection Failed
@@ -183,8 +187,8 @@ const SearchSettings: React.FC = () => {
             </>
           )}
         </Button>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
