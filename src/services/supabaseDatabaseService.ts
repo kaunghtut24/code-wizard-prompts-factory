@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
@@ -144,6 +145,23 @@ class SupabaseDatabaseService {
     }
 
     return (data || []).map(this.transformConversation);
+  }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    const userId = this.requireAuth();
+    
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('id', conversationId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting conversation:', error);
+      throw error;
+    }
+
+    console.log('Conversation deleted from Supabase:', conversationId);
   }
 
   async searchConversations(keyword: string): Promise<ConversationEntry[]> {
