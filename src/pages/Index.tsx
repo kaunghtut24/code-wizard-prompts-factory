@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { LogOut, Settings, Bot } from "lucide-react";
@@ -26,6 +25,7 @@ import SearchSettings from '@/components/SearchSettings';
 import AgentOrchestrator from '@/components/AgentOrchestrator';
 import InteractiveChatInterface from '@/components/InteractiveChatInterface';
 import ConversationHistory from '@/components/ConversationHistory';
+import ConversationHistoryItem from '@/components/ConversationHistoryItem';
 import { databaseService } from '@/services/databaseService';
 
 const Index = () => {
@@ -71,6 +71,15 @@ const Index = () => {
   const handleConversationSelect = (conversationId: string) => {
     setSelectedConversationId(conversationId);
     setShowConversationHistory(false);
+  };
+
+  const handleConversationDelete = async (conversationId: string) => {
+    try {
+      await databaseService.deleteConversation(conversationId);
+      await loadRecentConversations(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+    }
   };
 
   const getAgentName = (agentType: string) => {
@@ -134,7 +143,6 @@ const Index = () => {
             <InteractiveChatInterface
               activeAgent={currentAgent}
               agentName={getAgentName(currentAgent)}
-              onNewConversation={handleNewConversation}
             />
           </div>
 
@@ -213,22 +221,13 @@ const Index = () => {
                     <div className="p-4 space-y-2">
                       {recentConversations.length > 0 ? (
                         recentConversations.map((conversation) => (
-                          <div
+                          <ConversationHistoryItem
                             key={conversation.id}
-                            className={`p-2 rounded cursor-pointer text-sm border transition-colors hover:bg-muted ${
-                              selectedConversationId === conversation.id 
-                                ? 'bg-primary/10 border-primary' 
-                                : 'bg-card border-border'
-                            }`}
-                            onClick={() => handleConversationSelect(conversation.id)}
-                          >
-                            <div className="font-medium truncate mb-1">
-                              {conversation.user_input.substring(0, 50)}...
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(conversation.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
+                            conversation={conversation}
+                            onSelect={handleConversationSelect}
+                            onDelete={handleConversationDelete}
+                            isSelected={selectedConversationId === conversation.id}
+                          />
                         ))
                       ) : (
                         <p className="text-sm text-muted-foreground text-center py-4">
@@ -294,7 +293,6 @@ const Index = () => {
         isOpen={showConversationHistory}
         onClose={() => setShowConversationHistory(false)}
         currentAgent={currentAgent}
-        onConversationSelect={handleConversationSelect}
       />
 
       {/* AI Configuration Dialog */}
