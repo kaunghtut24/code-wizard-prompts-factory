@@ -13,7 +13,8 @@ import {
   Download, 
   Clock,
   MessageCircle,
-  Database
+  Database,
+  X
 } from 'lucide-react';
 import { databaseService, type ConversationEntry } from '@/services/databaseService';
 import EnhancedMessageDisplay from './EnhancedMessageDisplay';
@@ -54,7 +55,7 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
     try {
       setLoading(true);
       const allConversations = await databaseService.getConversations();
-      setConversations(allConversations); // Already sorted by created_at desc
+      setConversations(allConversations);
     } catch (error) {
       console.error('Error loading conversations:', error);
       toast({
@@ -79,12 +80,10 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
   const filterConversations = async () => {
     let filtered = conversations;
 
-    // Filter by agent type
     if (selectedAgent !== 'all') {
       filtered = filtered.filter(conv => conv.agent_type === selectedAgent);
     }
 
-    // Filter by search term
     if (searchTerm.trim()) {
       try {
         const searchResults = await databaseService.searchConversations(searchTerm);
@@ -167,16 +166,17 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-6xl h-5/6 flex flex-col">
-        <CardHeader>
+      <div className="w-full max-w-7xl h-[90vh] bg-background rounded-lg shadow-lg flex flex-col">
+        {/* Header */}
+        <div className="border-b p-6 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <History className="h-6 w-6 text-purple-600" />
               <div>
-                <CardTitle>Conversation History</CardTitle>
-                <CardDescription>
+                <h2 className="text-xl font-semibold">Conversation History</h2>
+                <p className="text-sm text-muted-foreground">
                   {storageStats.conversationCount || 0} conversations stored
-                </CardDescription>
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -188,18 +188,19 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 <Trash2 className="h-4 w-4 mr-2" />
                 Clear All
               </Button>
-              <Button variant="outline" onClick={onClose}>
-                Close
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
-        </CardHeader>
+        </div>
         
-        <CardContent className="flex-1 flex gap-4 overflow-hidden">
+        {/* Content */}
+        <div className="flex-1 flex overflow-hidden">
           {/* Left Panel - Conversation List */}
-          <div className="w-1/3 flex flex-col space-y-4">
+          <div className="w-1/3 border-r flex flex-col">
             {/* Search and Filter */}
-            <div className="space-y-2">
+            <div className="p-4 border-b space-y-3 flex-shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -224,7 +225,7 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
 
             {/* Conversation List */}
             <ScrollArea className="flex-1">
-              <div className="space-y-2">
+              <div className="p-4 space-y-3">
                 {loading ? (
                   <div className="text-center text-muted-foreground py-8">
                     Loading conversations...
@@ -239,7 +240,7 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                     }`}
                     onClick={() => setSelectedConversation(conversation)}
                   >
-                    <CardContent className="p-3">
+                    <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <Badge variant="secondary" className="text-xs">
                           {conversation.agent_type}
@@ -249,8 +250,8 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                           {formatTimestamp(conversation.created_at)}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-700 line-clamp-2">
-                        {conversation.user_input.slice(0, 100)}...
+                      <p className="text-sm text-gray-700 line-clamp-3">
+                        {conversation.user_input.slice(0, 150)}...
                       </p>
                       {conversation.metadata?.hasCodeSnippets && (
                         <Badge variant="outline" className="text-xs mt-2">
@@ -274,22 +275,30 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
           {/* Right Panel - Conversation Detail */}
           <div className="flex-1 flex flex-col">
             {selectedConversation ? (
-              <ScrollArea className="flex-1">
-                <div className="space-y-4 p-4">
-                  <EnhancedMessageDisplay
-                    content={selectedConversation.user_input}
-                    isUser={true}
-                    timestamp={new Date(selectedConversation.created_at).getTime()}
-                  />
-                  <EnhancedMessageDisplay
-                    content={selectedConversation.ai_output}
-                    isUser={false}
-                    agentType={selectedConversation.agent_type}
-                    timestamp={new Date(selectedConversation.created_at).getTime()}
-                    hasSearchResults={!!selectedConversation.metadata?.searchResults}
-                  />
+              <>
+                <div className="p-4 border-b flex-shrink-0">
+                  <h3 className="font-medium">Conversation Details</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {formatTimestamp(selectedConversation.created_at)} • {selectedConversation.agent_type}
+                  </p>
                 </div>
-              </ScrollArea>
+                <ScrollArea className="flex-1">
+                  <div className="p-6 space-y-6">
+                    <EnhancedMessageDisplay
+                      content={selectedConversation.user_input}
+                      isUser={true}
+                      timestamp={new Date(selectedConversation.created_at).getTime()}
+                    />
+                    <EnhancedMessageDisplay
+                      content={selectedConversation.ai_output}
+                      isUser={false}
+                      agentType={selectedConversation.agent_type}
+                      timestamp={new Date(selectedConversation.created_at).getTime()}
+                      hasSearchResults={!!selectedConversation.metadata?.searchResults}
+                    />
+                  </div>
+                </ScrollArea>
+              </>
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
@@ -300,8 +309,8 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

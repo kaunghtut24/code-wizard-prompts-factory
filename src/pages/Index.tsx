@@ -244,7 +244,7 @@ const Index = () => {
 
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-5xl w-[90vw] h-[85vh] flex flex-col p-0">
+        <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0">
           <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
@@ -255,7 +255,7 @@ const Index = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <Tabs defaultValue="ai" className="w-full h-full flex flex-col">
               <div className="px-6 py-2 border-b flex-shrink-0">
                 <TabsList className="grid w-full grid-cols-3">
@@ -265,7 +265,7 @@ const Index = () => {
                 </TabsList>
               </div>
               
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0">
                 <TabsContent value="ai" className="h-full m-0">
                   <ScrollArea className="h-full">
                     <div className="p-6">
