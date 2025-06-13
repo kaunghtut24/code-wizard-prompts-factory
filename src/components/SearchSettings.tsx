@@ -37,34 +37,62 @@ const SearchSettings: React.FC = () => {
       setLoading(true);
       console.log('Loading search settings...');
       
-      const [enabled, provider, maxRes, serpKey, tavilyKey] = await Promise.all([
+      // Load settings with individual error handling
+      const settingsPromises = [
         databaseService.getUserSetting('search_enabled', true),
         databaseService.getUserSetting('search_provider', 'duckduckgo'),
         databaseService.getUserSetting('search_max_results', 5),
         databaseService.getUserSetting('serpapi_key', ''),
         databaseService.getUserSetting('tavily_api_key', '')
-      ]);
+      ];
 
-      setSearchEnabled(Boolean(enabled));
-      setSearchProvider(String(provider));
-      setMaxResults(Number(maxRes));
-      setSerpApiKey(String(serpKey || ''));
-      setTavilyApiKey(String(tavilyKey || ''));
+      const results = await Promise.allSettled(settingsPromises);
+      
+      // Extract values with proper fallbacks
+      const enabled = results[0].status === 'fulfilled' ? Boolean(results[0].value) : true;
+      const provider = results[1].status === 'fulfilled' ? String(results[1].value) : 'duckduckgo';
+      const maxRes = results[2].status === 'fulfilled' ? Number(results[2].value) : 5;
+      const serpKey = results[3].status === 'fulfilled' ? String(results[3].value || '') : '';
+      const tavilyKey = results[4].status === 'fulfilled' ? String(results[4].value || '') : '';
+
+      setSearchEnabled(enabled);
+      setSearchProvider(provider);
+      setMaxResults(maxRes);
+      setSerpApiKey(serpKey);
+      setTavilyApiKey(tavilyKey);
 
       console.log('Search settings loaded successfully:', { 
-        enabled: Boolean(enabled), 
-        provider: String(provider), 
-        maxRes: Number(maxRes),
+        enabled, 
+        provider, 
+        maxRes,
         hasSerpKey: !!serpKey,
         hasTavilyKey: !!tavilyKey
       });
+
+      // Check for any failed loads
+      const failures = results.filter(result => result.status === 'rejected');
+      if (failures.length > 0) {
+        console.warn('Some settings failed to load, using defaults:', failures);
+        toast({
+          title: "Partial Load",
+          description: "Some settings couldn't be loaded and defaults were used.",
+          variant: "default",
+        });
+      }
     } catch (error) {
       console.error('Error loading search settings:', error);
       toast({
-        title: "Error",
-        description: "Failed to load search settings: " + (error instanceof Error ? error.message : 'Unknown error'),
+        title: "Load Error",
+        description: "Failed to load search settings. Using defaults.",
         variant: "destructive",
       });
+      
+      // Set defaults on complete failure
+      setSearchEnabled(true);
+      setSearchProvider('duckduckgo');
+      setMaxResults(5);
+      setSerpApiKey('');
+      setTavilyApiKey('');
     } finally {
       setLoading(false);
     }
@@ -74,10 +102,10 @@ const SearchSettings: React.FC = () => {
     try {
       let hasValidKey = false;
       
-      if (searchProvider === 'serpapi' && serpApiKey.trim()) {
-        hasValidKey = true;
-      } else if (searchProvider === 'tavily' && tavilyApiKey.trim()) {
-        hasValidKey = true;
+      if (searchProvider === 'serpapi') {
+        hasValidKey = !!(serpApiKey && serpApiKey.trim());
+      } else if (searchProvider === 'tavily') {
+        hasValidKey = !!(tavilyApiKey && tavilyApiKey.trim());
       } else if (searchProvider === 'duckduckgo') {
         hasValidKey = true;
       }
@@ -105,12 +133,17 @@ const SearchSettings: React.FC = () => {
       console.log('Testing connection with provider:', searchProvider);
       
       // First save the current configuration to ensure the service uses it
-      await searchService.configure({
+      const testConfig = {
         provider: searchProvider,
         serpApiKey: serpApiKey.trim() || undefined,
         tavilyApiKey: tavilyApiKey.trim() || undefined,
         maxResults
-      });
+      };
+
+      await searchService.configure(testConfig);
+      
+      // Wait a moment for configuration to settle
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const result = await searchService.search('test query', { 
         maxResults: 1,
@@ -123,13 +156,14 @@ const SearchSettings: React.FC = () => {
           description: `${searchProvider.toUpperCase()} search is working correctly.`,
         });
       } else {
-        throw new Error('No valid results returned');
+        throw new Error('No valid results returned from search service');
       }
     } catch (error) {
       console.error('Connection test failed:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to connect to search service.";
       toast({
         title: "Connection Failed",
-        description: error instanceof Error ? error.message : "Failed to connect to search service.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -147,23 +181,57 @@ const SearchSettings: React.FC = () => {
         hasSerpKey: !!serpApiKey.trim(),
         hasTavilyKey: !!tavilyApiKey.trim()
       });
+
+      // Validate inputs
+      if (!searchProvider || !['duckduckgo', 'serpapi', 'tavily'].includes(searchProvider)) {
+        throw new Error('Invalid search provider selected');
+      }
+
+      if (!maxResults || maxResults < 1 || maxResults > 10) {
+        throw new Error('Max results must be between 1 and 10');
+      }
+
+      if (searchProvider === 'serpapi' && (!serpApiKey || !serpApiKey.trim())) {
+        throw new Error('SerpAPI key is required for SerpAPI provider');
+      }
+
+      if (searchProvider === 'tavily' && (!tavilyApiKey || !tavilyApiKey.trim())) {
+        throw new Error('Tavily API key is required for Tavily provider');
+      }
       
-      // Save all settings individually with proper error handling
-      await Promise.all([
+      // Save all settings with individual error handling
+      const savePromises = [
         databaseService.setUserSetting('search_enabled', searchEnabled),
         databaseService.setUserSetting('search_provider', searchProvider),
-        databaseService.setUserSetting('search_max_results', maxResults),
-        serpApiKey.trim() ? databaseService.setUserSetting('serpapi_key', serpApiKey.trim()) : Promise.resolve(),
-        tavilyApiKey.trim() ? databaseService.setUserSetting('tavily_api_key', tavilyApiKey.trim()) : Promise.resolve()
-      ]);
+        databaseService.setUserSetting('search_max_results', maxResults)
+      ];
+
+      if (serpApiKey && serpApiKey.trim()) {
+        savePromises.push(databaseService.setUserSetting('serpapi_key', serpApiKey.trim()));
+      }
       
+      if (tavilyApiKey && tavilyApiKey.trim()) {
+        savePromises.push(databaseService.setUserSetting('tavily_api_key', tavilyApiKey.trim()));
+      }
+
+      const results = await Promise.allSettled(savePromises);
+      
+      // Check for failures
+      const failures = results.filter(result => result.status === 'rejected');
+      if (failures.length > 0) {
+        console.error('Some settings failed to save:', failures);
+        throw new Error(`Failed to save ${failures.length} setting(s)`);
+      }
+
       // Configure the search service with the new settings
-      await searchService.configure({
+      const searchConfig = {
         provider: searchProvider,
         serpApiKey: serpApiKey.trim() || undefined,
         tavilyApiKey: tavilyApiKey.trim() || undefined,
         maxResults
-      });
+      };
+
+      await searchService.configure(searchConfig);
       
       toast({
         title: "Settings Saved",
@@ -175,9 +243,10 @@ const SearchSettings: React.FC = () => {
       console.log('Search settings saved successfully');
     } catch (error) {
       console.error('Error saving search settings:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: "Save Failed",
-        description: "Failed to save search settings: " + (error instanceof Error ? error.message : 'Unknown error'),
+        description: `Failed to save search settings: ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -400,7 +469,7 @@ const SearchSettings: React.FC = () => {
             {saving ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
+                Saving Settings...
               </>
             ) : (
               <>

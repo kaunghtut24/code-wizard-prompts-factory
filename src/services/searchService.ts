@@ -31,33 +31,55 @@ class SearchService {
   private readonly proxyUrl = 'https://api.allorigins.win/get?url=';
   private readonly requestTimeout = 10000;
   private configLoaded = false;
+  private configLoadingPromise: Promise<void> | null = null;
 
   constructor() {
     // Don't load configuration in constructor to avoid async issues
   }
 
   private async ensureConfigLoaded(): Promise<void> {
-    if (!this.configLoaded) {
-      await this.loadConfiguration();
-      this.configLoaded = true;
+    if (this.configLoaded) {
+      return;
     }
+
+    // Prevent multiple concurrent loads
+    if (this.configLoadingPromise) {
+      return this.configLoadingPromise;
+    }
+
+    this.configLoadingPromise = this.loadConfiguration();
+    await this.configLoadingPromise;
+    this.configLoadingPromise = null;
   }
 
   private async loadConfiguration(): Promise<void> {
     try {
-      const provider = await databaseService.getUserSetting('search_provider', 'duckduckgo');
-      const maxResults = await databaseService.getUserSetting('search_max_results', 5);
-      const serpApiKey = await databaseService.getUserSetting('serpapi_key', '');
-      const tavilyApiKey = await databaseService.getUserSetting('tavily_api_key', '');
+      console.log('Loading search configuration from database...');
+      
+      // Load all settings with proper error handling for each
+      const [provider, maxResults, serpApiKey, tavilyApiKey] = await Promise.allSettled([
+        databaseService.getUserSetting('search_provider', 'duckduckgo'),
+        databaseService.getUserSetting('search_max_results', 5),
+        databaseService.getUserSetting('serpapi_key', ''),
+        databaseService.getUserSetting('tavily_api_key', '')
+      ]);
+
+      // Extract values with fallbacks
+      const resolvedProvider = provider.status === 'fulfilled' ? String(provider.value) : 'duckduckgo';
+      const resolvedMaxResults = maxResults.status === 'fulfilled' ? Number(maxResults.value) : 5;
+      const resolvedSerpKey = serpApiKey.status === 'fulfilled' ? String(serpApiKey.value || '') : '';
+      const resolvedTavilyKey = tavilyApiKey.status === 'fulfilled' ? String(tavilyApiKey.value || '') : '';
 
       this.config = {
-        provider: String(provider),
-        maxResults: Number(maxResults),
-        serpApiKey: serpApiKey ? String(serpApiKey) : undefined,
-        tavilyApiKey: tavilyApiKey ? String(tavilyApiKey) : undefined
+        provider: resolvedProvider,
+        maxResults: resolvedMaxResults,
+        serpApiKey: resolvedSerpKey || undefined,
+        tavilyApiKey: resolvedTavilyKey || undefined
       };
 
-      console.log('Search service configured:', { 
+      this.configLoaded = true;
+
+      console.log('Search service configuration loaded:', { 
         provider: this.config.provider,
         maxResults: this.config.maxResults,
         hasSerpKey: !!this.config.serpApiKey,
@@ -70,6 +92,8 @@ class SearchService {
         provider: 'duckduckgo',
         maxResults: 5
       };
+      this.configLoaded = true;
+      throw new Error(`Failed to load search configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -77,25 +101,51 @@ class SearchService {
     try {
       console.log('Configuring search service with:', config);
       
-      // Save all settings to database first
-      await databaseService.setUserSetting('search_provider', config.provider);
-      await databaseService.setUserSetting('search_max_results', config.maxResults);
-      
-      if (config.serpApiKey) {
-        await databaseService.setUserSetting('serpapi_key', config.serpApiKey);
+      // Validate configuration
+      if (!config.provider || !['duckduckgo', 'serpapi', 'tavily'].includes(config.provider)) {
+        throw new Error('Invalid search provider specified');
       }
-      if (config.tavilyApiKey) {
-        await databaseService.setUserSetting('tavily_api_key', config.tavilyApiKey);
+
+      if (!config.maxResults || config.maxResults < 1 || config.maxResults > 10) {
+        throw new Error('Max results must be between 1 and 10');
+      }
+
+      // Save all settings to database with individual error handling
+      const saveOperations = [
+        databaseService.setUserSetting('search_provider', config.provider),
+        databaseService.setUserSetting('search_max_results', config.maxResults)
+      ];
+
+      if (config.serpApiKey && config.serpApiKey.trim()) {
+        saveOperations.push(databaseService.setUserSetting('serpapi_key', config.serpApiKey.trim()));
       }
       
-      // Update local config
-      this.config = { ...config };
+      if (config.tavilyApiKey && config.tavilyApiKey.trim()) {
+        saveOperations.push(databaseService.setUserSetting('tavily_api_key', config.tavilyApiKey.trim()));
+      }
+
+      // Wait for all save operations to complete
+      const results = await Promise.allSettled(saveOperations);
+      
+      // Check if any saves failed
+      const failures = results.filter(result => result.status === 'rejected');
+      if (failures.length > 0) {
+        console.error('Some settings failed to save:', failures);
+        throw new Error('Failed to save some configuration settings');
+      }
+      
+      // Update local config only after successful database saves
+      this.config = { 
+        ...config,
+        serpApiKey: config.serpApiKey?.trim() || undefined,
+        tavilyApiKey: config.tavilyApiKey?.trim() || undefined
+      };
       this.configLoaded = true;
       
-      console.log('Search service reconfigured successfully');
+      console.log('Search service configuration saved and updated successfully');
     } catch (error) {
       console.error('Failed to configure search service:', error);
-      throw new Error('Failed to save search configuration');
+      throw new Error(`Failed to save search configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -104,7 +154,9 @@ class SearchService {
     return { ...this.config };
   }
 
-  public getApiKey(): string | null {
+  public async getApiKey(): Promise<string | null> {
+    await this.ensureConfigLoaded();
+    
     if (this.config.provider === 'serpapi') {
       return this.config.serpApiKey || null;
     }
@@ -116,31 +168,49 @@ class SearchService {
 
   public async setApiKey(apiKey: string): Promise<void> {
     try {
-      if (this.config.provider === 'serpapi') {
-        this.config.serpApiKey = apiKey;
-        await databaseService.setUserSetting('serpapi_key', apiKey);
-      } else if (this.config.provider === 'tavily') {
-        this.config.tavilyApiKey = apiKey;
-        await databaseService.setUserSetting('tavily_api_key', apiKey);
+      await this.ensureConfigLoaded();
+      
+      if (!apiKey || !apiKey.trim()) {
+        throw new Error('API key cannot be empty');
       }
+
+      const trimmedKey = apiKey.trim();
+      
+      if (this.config.provider === 'serpapi') {
+        await databaseService.setUserSetting('serpapi_key', trimmedKey);
+        this.config.serpApiKey = trimmedKey;
+      } else if (this.config.provider === 'tavily') {
+        await databaseService.setUserSetting('tavily_api_key', trimmedKey);
+        this.config.tavilyApiKey = trimmedKey;
+      } else {
+        throw new Error(`API key not needed for provider: ${this.config.provider}`);
+      }
+      
       console.log(`${this.config.provider} API key updated successfully`);
     } catch (error) {
       console.error('Failed to set API key:', error);
-      throw error;
+      throw new Error(`Failed to set API key: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  public isConfigured(): boolean {
-    if (this.config.provider === 'duckduckgo') {
-      return true; // No API key needed
+  public async isConfigured(): Promise<boolean> {
+    try {
+      await this.ensureConfigLoaded();
+      
+      if (this.config.provider === 'duckduckgo') {
+        return true; // No API key needed
+      }
+      if (this.config.provider === 'serpapi') {
+        return !!(this.config.serpApiKey && this.config.serpApiKey.trim());
+      }
+      if (this.config.provider === 'tavily') {
+        return !!(this.config.tavilyApiKey && this.config.tavilyApiKey.trim());
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking configuration:', error);
+      return false;
     }
-    if (this.config.provider === 'serpapi') {
-      return !!this.config.serpApiKey;
-    }
-    if (this.config.provider === 'tavily') {
-      return !!this.config.tavilyApiKey;
-    }
-    return false;
   }
 
   private async fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = this.requestTimeout): Promise<Response> {
@@ -183,7 +253,7 @@ class SearchService {
       provider: this.config.provider, 
       useCache, 
       maxResults,
-      isConfigured: this.isConfigured()
+      isConfigured: await this.isConfigured()
     });
 
     if (useCache) {
