@@ -30,9 +30,17 @@ class SearchService {
   };
   private readonly proxyUrl = 'https://api.allorigins.win/get?url=';
   private readonly requestTimeout = 10000;
+  private configLoaded = false;
 
   constructor() {
-    this.loadConfiguration();
+    // Don't load configuration in constructor to avoid async issues
+  }
+
+  private async ensureConfigLoaded(): Promise<void> {
+    if (!this.configLoaded) {
+      await this.loadConfiguration();
+      this.configLoaded = true;
+    }
   }
 
   private async loadConfiguration(): Promise<void> {
@@ -43,10 +51,10 @@ class SearchService {
       const tavilyApiKey = await databaseService.getUserSetting('tavily_api_key', '');
 
       this.config = {
-        provider,
-        maxResults,
-        serpApiKey: serpApiKey || undefined,
-        tavilyApiKey: tavilyApiKey || undefined
+        provider: String(provider),
+        maxResults: Number(maxResults),
+        serpApiKey: serpApiKey ? String(serpApiKey) : undefined,
+        tavilyApiKey: tavilyApiKey ? String(tavilyApiKey) : undefined
       };
 
       console.log('Search service configured:', { 
@@ -57,12 +65,43 @@ class SearchService {
       });
     } catch (error) {
       console.error('Failed to load search configuration:', error);
+      // Use defaults if loading fails
+      this.config = {
+        provider: 'duckduckgo',
+        maxResults: 5
+      };
     }
   }
 
   public async configure(config: SearchConfiguration): Promise<void> {
-    this.config = { ...config };
-    console.log('Search service reconfigured:', this.config.provider);
+    try {
+      console.log('Configuring search service with:', config);
+      
+      // Save all settings to database first
+      await databaseService.setUserSetting('search_provider', config.provider);
+      await databaseService.setUserSetting('search_max_results', config.maxResults);
+      
+      if (config.serpApiKey) {
+        await databaseService.setUserSetting('serpapi_key', config.serpApiKey);
+      }
+      if (config.tavilyApiKey) {
+        await databaseService.setUserSetting('tavily_api_key', config.tavilyApiKey);
+      }
+      
+      // Update local config
+      this.config = { ...config };
+      this.configLoaded = true;
+      
+      console.log('Search service reconfigured successfully');
+    } catch (error) {
+      console.error('Failed to configure search service:', error);
+      throw new Error('Failed to save search configuration');
+    }
+  }
+
+  public async getConfiguration(): Promise<SearchConfiguration> {
+    await this.ensureConfigLoaded();
+    return { ...this.config };
   }
 
   public getApiKey(): string | null {
@@ -76,14 +115,19 @@ class SearchService {
   }
 
   public async setApiKey(apiKey: string): Promise<void> {
-    if (this.config.provider === 'serpapi') {
-      this.config.serpApiKey = apiKey;
-      await databaseService.setUserSetting('serpapi_key', apiKey);
-    } else if (this.config.provider === 'tavily') {
-      this.config.tavilyApiKey = apiKey;
-      await databaseService.setUserSetting('tavily_api_key', apiKey);
+    try {
+      if (this.config.provider === 'serpapi') {
+        this.config.serpApiKey = apiKey;
+        await databaseService.setUserSetting('serpapi_key', apiKey);
+      } else if (this.config.provider === 'tavily') {
+        this.config.tavilyApiKey = apiKey;
+        await databaseService.setUserSetting('tavily_api_key', apiKey);
+      }
+      console.log(`${this.config.provider} API key updated successfully`);
+    } catch (error) {
+      console.error('Failed to set API key:', error);
+      throw error;
     }
-    console.log(`${this.config.provider} API key updated`);
   }
 
   public isConfigured(): boolean {
@@ -130,26 +174,33 @@ class SearchService {
     maxResults?: number;
     location?: string;
   } = {}): Promise<SearchResponse> {
+    await this.ensureConfigLoaded();
+    
     const { useCache = true, maxResults = this.config.maxResults, location = 'United States' } = options;
 
     console.log('Starting web search:', { 
       query, 
       provider: this.config.provider, 
       useCache, 
-      maxResults 
+      maxResults,
+      isConfigured: this.isConfigured()
     });
 
     if (useCache) {
-      const cachedResult = await databaseService.getCachedSearch(query);
-      if (cachedResult) {
-        console.log('Using cached search result');
-        return {
-          results: cachedResult.slice(0, maxResults),
-          query,
-          timestamp: Date.now(),
-          cached: true,
-          provider: this.config.provider
-        };
+      try {
+        const cachedResult = await databaseService.getCachedSearch(query);
+        if (cachedResult) {
+          console.log('Using cached search result');
+          return {
+            results: cachedResult.slice(0, maxResults),
+            query,
+            timestamp: Date.now(),
+            cached: true,
+            provider: this.config.provider
+          };
+        }
+      } catch (error) {
+        console.warn('Cache lookup failed:', error);
       }
     }
 
@@ -170,7 +221,11 @@ class SearchService {
       }
 
       if (result.results.length > 0) {
-        await databaseService.setCachedSearch(query, result.results);
+        try {
+          await databaseService.setCachedSearch(query, result.results);
+        } catch (error) {
+          console.warn('Failed to cache search results:', error);
+        }
       }
       
       console.log('Web search completed:', { 
@@ -217,7 +272,7 @@ class SearchService {
     const response = await this.fetchWithTimeout(`${this.proxyUrl}${encodeURIComponent(targetUrl)}`);
 
     if (!response.ok) {
-      throw new Error(`SerpApi request failed: ${response.status}`);
+      throw new Error(`SerpApi request failed: ${response.status} ${response.statusText}`);
     }
 
     const proxyData = await response.json();
@@ -230,9 +285,9 @@ class SearchService {
     const results: SearchResult[] = (data.organic_results || [])
       .slice(0, maxResults)
       .map((result: any, index: number) => ({
-        title: result.title || '',
-        link: result.link || '',
-        snippet: result.snippet || '',
+        title: result.title || 'No title',
+        link: result.link || '#',
+        snippet: result.snippet || 'No description',
         position: result.position || index + 1,
         date: result.date || undefined
       }));
@@ -266,7 +321,7 @@ class SearchService {
     });
 
     if (!response.ok) {
-      throw new Error(`Tavily request failed: ${response.status}`);
+      throw new Error(`Tavily request failed: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -274,9 +329,9 @@ class SearchService {
     const results: SearchResult[] = (data.results || [])
       .slice(0, maxResults)
       .map((result: any, index: number) => ({
-        title: result.title || '',
-        link: result.url || '',
-        snippet: result.content || '',
+        title: result.title || 'No title',
+        link: result.url || '#',
+        snippet: result.content || 'No description',
         position: index + 1
       }));
 
@@ -294,7 +349,7 @@ class SearchService {
     const response = await this.fetchWithTimeout(`${this.proxyUrl}${encodeURIComponent(ddgUrl)}`);
 
     if (!response.ok) {
-      throw new Error(`DuckDuckGo request failed: ${response.status}`);
+      throw new Error(`DuckDuckGo request failed: ${response.status} ${response.statusText}`);
     }
 
     const proxyData = await response.json();
