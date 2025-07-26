@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { authService } from '@/services/authService';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, User, ArrowRight } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight, UserPlus } from 'lucide-react';
 
 const Auth: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -110,6 +111,35 @@ const Auth: React.FC = () => {
     }
   };
 
+  const handleAnonymousSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      
+      if (error) {
+        toast({
+          title: "Anonymous Sign In Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Welcome",
+          description: "Signed in anonymously. Your data will be temporary.",
+        });
+        navigate('/');
+      }
+    } catch (error) {
+      toast({
+        title: "Anonymous Sign In Failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4">
       <Card className="w-full max-w-md">
@@ -121,11 +151,43 @@ const Auth: React.FC = () => {
           </div>
           <CardTitle className="text-2xl font-bold">CodeCraft AI</CardTitle>
           <CardDescription>
-            Sign in to access your AI coding assistant with persistent storage
+            Your intelligent AI coding companion with advanced search capabilities and conversation history
           </CardDescription>
         </CardHeader>
         
         <CardContent>
+          <div className="space-y-4">
+            {/* Anonymous Sign In Option */}
+            <div className="bg-muted/50 p-4 rounded-lg border border-dashed">
+              <div className="text-center space-y-2">
+                <h3 className="text-sm font-medium">Try CodeCraft AI</h3>
+                <p className="text-xs text-muted-foreground">
+                  Quick access without account creation - data will be temporary
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleAnonymousSignIn}
+                  disabled={isLoading}
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Continue Anonymously
+                </Button>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with account
+                </span>
+              </div>
+            </div>
+          </div>
+
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>

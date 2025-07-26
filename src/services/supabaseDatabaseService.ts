@@ -82,7 +82,8 @@ class SupabaseDatabaseService {
 
   private requireAuth(): string {
     if (!this.user) {
-      throw new Error('User must be authenticated to perform this action');
+      console.warn('No authenticated user found when accessing database service');
+      throw new Error('Authentication required. Please sign in to continue.');
     }
     return this.user.id;
   }

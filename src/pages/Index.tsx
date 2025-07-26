@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Settings, Bot } from "lucide-react";
 import { authService } from "@/services/authService";
 import { useNavigate } from "react-router-dom";
+import WelcomeGuide from '@/components/WelcomeGuide';
+import DashboardStats from '@/components/DashboardStats';
 import {
   Select,
   SelectContent,
@@ -37,15 +39,22 @@ const Index = () => {
   const [currentAgent, setCurrentAgent] = useState("general");
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [recentConversations, setRecentConversations] = useState<any[]>([]);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       const user = await authService.getCurrentUser();
       if (!user) {
         navigate('/auth');
+      } else {
+        // Check if this is a first-time user
+        const hasSeenWelcome = localStorage.getItem('codecraft_welcome_seen');
+        if (!hasSeenWelcome) {
+          setShowWelcome(true);
+        }
       }
     };
-
+    
     checkAuth();
   }, [navigate]);
 
@@ -101,6 +110,15 @@ const Index = () => {
     loadRecentConversations(); // Refresh the list
   };
 
+  const handleWelcomeComplete = () => {
+    localStorage.setItem('codecraft_welcome_seen', 'true');
+    setShowWelcome(false);
+  };
+
+  if (showWelcome) {
+    return <WelcomeGuide onComplete={handleWelcomeComplete} />;
+  }
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Chat Interface */}
@@ -139,6 +157,12 @@ const Index = () => {
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Chat Area */}
           <div className="flex-1 flex flex-col min-w-0">
+            <div className="p-6">
+              <DashboardStats 
+                currentAgent={currentAgent}
+                recentConversations={recentConversations}
+              />
+            </div>
             <InteractiveChatInterface
               activeAgent={currentAgent}
               agentName={getAgentName(currentAgent)}

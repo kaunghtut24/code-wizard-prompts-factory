@@ -81,11 +81,21 @@ const SearchSettings: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading search settings:', error);
-      toast({
-        title: "Load Error",
-        description: "Failed to load search settings. Using defaults.",
-        variant: "destructive",
-      });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      if (errorMessage.includes('Authentication required')) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to access search settings.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Load Error",
+          description: "Failed to load search settings. Using defaults.",
+          variant: "destructive",
+        });
+      }
       
       // Set defaults on complete failure
       setSearchEnabled(true);
@@ -244,11 +254,20 @@ const SearchSettings: React.FC = () => {
     } catch (error) {
       console.error('Error saving search settings:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast({
-        title: "Save Failed",
-        description: `Failed to save search settings: ${errorMessage}`,
-        variant: "destructive",
-      });
+      
+      if (errorMessage.includes('Authentication required')) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to save search settings.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Save Failed",
+          description: `Failed to save search settings: ${errorMessage}`,
+          variant: "destructive",
+        });
+      }
     } finally {
       setSaving(false);
     }
