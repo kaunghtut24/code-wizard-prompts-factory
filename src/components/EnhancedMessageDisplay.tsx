@@ -172,10 +172,10 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
   }
 
   return (
-    <div className={`rounded-lg p-4 border shadow-sm ${
+    <div className={`rounded-lg p-4 border shadow-sm max-w-4xl ${
       isUser 
-        ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 ml-12' 
-        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 mr-12'
+        ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 ml-auto' 
+        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
     }`}>
       <div className="flex items-center gap-2 mb-3">
         {isUser ? (

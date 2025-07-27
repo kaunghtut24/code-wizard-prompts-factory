@@ -417,7 +417,7 @@ Remember to be contextually aware of the entire conversation flow and any attach
           {/* Messages Area with proper scrolling */}
           <div className="flex-1 min-h-0">
             <ScrollArea className="h-full">
-              <div className="space-y-6 pr-4">
+              <div className="space-y-4 pr-4">
                 {messages.length === 0 ? (
                   <div className="text-center text-muted-foreground py-12">
                     <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
@@ -437,8 +437,8 @@ Remember to be contextually aware of the entire conversation flow and any attach
                       />
                       
                       {message.attachedFiles && message.attachedFiles.length > 0 && (
-                        <div className="mt-2 ml-16">
-                          <div className="text-xs text-gray-600 mb-1">Attached files:</div>
+                        <div className={`mt-2 ${message.isUser ? '' : 'ml-16'}`}>
+                          <div className="text-xs text-muted-foreground mb-1">Attached files:</div>
                           <div className="flex flex-wrap gap-1">
                             {message.attachedFiles.map((file) => (
                               <Badge key={file.id} variant="outline" className="text-xs">

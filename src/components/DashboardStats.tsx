@@ -50,9 +50,11 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ currentAgent, recentCon
       });
       
       // Find most used agent
-      const mostUsedAgent = Object.entries(agentCounts).reduce((a, b) => 
-        agentCounts[a[0]] > agentCounts[b[0]] ? a : b
-      )?.[0] || 'code-generation';
+      const mostUsedAgent = Object.keys(agentCounts).length > 0 
+        ? Object.entries(agentCounts).reduce((a, b) => 
+            agentCounts[a[0]] > agentCounts[b[0]] ? a : b
+          )[0] 
+        : 'code-generation';
       
       setStats({
         totalConversations: allConversations.length,

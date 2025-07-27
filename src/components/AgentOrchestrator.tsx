@@ -148,16 +148,16 @@ const AgentOrchestrator: React.FC<AgentOrchestratorProps> = ({
           <div className="bg-white p-4 rounded-lg border">
             <h4 className="font-semibold mb-3 flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Available Specialized Agents
+              Specialized Agents
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {[
                 'Code Generator', 'Bug Fixer', 'Refactor Specialist',
                 'Test Generator', 'Documentation Agent', 'Security Auditor',
                 'Performance Optimizer', 'Architecture Reviewer', 'GitHub Assistant',
                 'Semantic Search', 'MCP Analyzer'
               ].map((agent) => (
-                <Badge key={agent} variant="outline" className="text-xs justify-center py-1">
+                <Badge key={agent} variant="outline" className="text-xs justify-center py-1 whitespace-nowrap">
                   {agent}
                 </Badge>
               ))}
@@ -213,24 +213,27 @@ const AgentOrchestrator: React.FC<AgentOrchestratorProps> = ({
             </div>
           )}
 
-          {/* System Prompt Template */}
+          {/* System Capabilities */}
           <div className="bg-gray-50 p-4 rounded-lg border">
-            <h4 className="font-semibold mb-2">Enhanced System Capabilities</h4>
-            <div className="text-xs font-mono bg-white p-3 rounded border overflow-x-auto">
-              <div className="text-green-600"># Enhanced Agent Orchestrator</div>
-              <div className="mt-2">
-                <div className="text-blue-600">New Features:</div>
-                <div>• Multi-agent collaborative workflows</div>
-                <div>• Intelligent task complexity analysis</div>
-                <div>• Sequential, parallel, and iterative agent coordination</div>
-                <div>• Enhanced markdown rendering with syntax highlighting</div>
-                <div>• 11 specialized agents with domain expertise</div>
-                <br />
-                <div className="text-blue-600">Collaboration Patterns:</div>
-                <div>• Full-stack development (5 agents)</div>
-                <div>• Bug investigation (4 agents)</div>
-                <div>• Code review (4 agents)</div>
-                <div>• Legacy modernization (5 agents)</div>
+            <h4 className="font-semibold mb-3">System Capabilities</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <div className="font-medium text-blue-600 mb-2">Core Features:</div>
+                <ul className="space-y-1 text-gray-700">
+                  <li>• Multi-agent workflows</li>
+                  <li>• Task complexity analysis</li>
+                  <li>• Agent coordination</li>
+                  <li>• Enhanced markdown rendering</li>
+                </ul>
+              </div>
+              <div>
+                <div className="font-medium text-blue-600 mb-2">Collaboration Patterns:</div>
+                <ul className="space-y-1 text-gray-700">
+                  <li>• Full-stack development</li>
+                  <li>• Bug investigation</li>
+                  <li>• Code review</li>
+                  <li>• Legacy modernization</li>
+                </ul>
               </div>
             </div>
           </div>

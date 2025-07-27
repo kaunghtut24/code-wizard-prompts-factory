@@ -241,7 +241,13 @@ const SearchSettings: React.FC = () => {
         maxResults
       };
 
-      await searchService.configure(searchConfig);
+      try {
+        await searchService.configure(searchConfig);
+        console.log('Search service configured successfully:', searchConfig);
+      } catch (configError) {
+        console.error('Failed to configure search service:', configError);
+        // Don't throw here as settings were saved successfully
+      }
       
       toast({
         title: "Settings Saved",
