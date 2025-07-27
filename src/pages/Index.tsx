@@ -25,7 +25,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import AIConfiguration from '@/components/AIConfiguration';
 import DatabaseSettings from '@/components/DatabaseSettings';
 import SearchSettings from '@/components/SearchSettings';
-import AgentOrchestrator from '@/components/AgentOrchestrator';
+import CompactAgentOrchestrator from '@/components/CompactAgentOrchestrator';
 import InteractiveChatInterface from '@/components/InteractiveChatInterface';
 import ConversationHistory from '@/components/ConversationHistory';
 import ConversationHistoryItem from '@/components/ConversationHistoryItem';
@@ -184,8 +184,8 @@ const Index = () => {
                   </Button>
                 </div>
                 <ScrollArea className="flex-1">
-                  <div className="p-4">
-                    <AgentOrchestrator 
+                  <div className="p-3">
+                    <CompactAgentOrchestrator 
                       input=""
                       setOutput={() => {}}
                       isProcessing={false}

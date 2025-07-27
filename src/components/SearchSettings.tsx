@@ -170,7 +170,20 @@ const SearchSettings: React.FC = () => {
       }
     } catch (error) {
       console.error('Connection test failed:', error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to connect to search service.";
+      let errorMessage = "Failed to connect to search service.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('API key')) {
+          errorMessage = "Invalid API key. Please check your configuration.";
+        } else if (error.message.includes('timeout')) {
+          errorMessage = "Connection timeout. Please try again.";
+        } else if (error.message.includes('Failed to save')) {
+          errorMessage = "Failed to save configuration. Please try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Connection Failed",
         description: errorMessage,
@@ -246,7 +259,17 @@ const SearchSettings: React.FC = () => {
         console.log('Search service configured successfully:', searchConfig);
       } catch (configError) {
         console.error('Failed to configure search service:', configError);
-        // Don't throw here as settings were saved successfully
+        
+        // Show warning but don't fail the save operation
+        toast({
+          title: "Settings Saved with Warning",
+          description: "Settings saved but service configuration failed. Please test connection.",
+          variant: "default",
+        });
+        
+        // Recheck connection after saving
+        checkConnection();
+        return;
       }
       
       toast({
@@ -259,21 +282,27 @@ const SearchSettings: React.FC = () => {
       console.log('Search settings saved successfully');
     } catch (error) {
       console.error('Error saving search settings:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      let errorMessage = 'Unknown error occurred';
       
-      if (errorMessage.includes('Authentication required')) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to save search settings.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Save Failed",
-          description: `Failed to save search settings: ${errorMessage}`,
-          variant: "destructive",
-        });
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication required')) {
+          errorMessage = "Please sign in to save search settings.";
+        } else if (error.message.includes('Invalid search provider')) {
+          errorMessage = "Please select a valid search provider.";
+        } else if (error.message.includes('Max results')) {
+          errorMessage = "Please enter a valid number of results (1-10).";
+        } else if (error.message.includes('API key is required')) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = `Failed to save search settings: ${error.message}`;
+        }
       }
+      
+      toast({
+        title: "Save Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }

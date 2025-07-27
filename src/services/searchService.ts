@@ -193,10 +193,8 @@ class SearchService {
     }
   }
 
-  public async isConfigured(): Promise<boolean> {
+  public isConfigured(): boolean {
     try {
-      await this.ensureConfigLoaded();
-      
       if (this.config.provider === 'duckduckgo') {
         return true; // No API key needed
       }
@@ -253,7 +251,7 @@ class SearchService {
       provider: this.config.provider, 
       useCache, 
       maxResults,
-      isConfigured: await this.isConfigured()
+      isConfigured: this.isConfigured()
     });
 
     if (useCache) {
