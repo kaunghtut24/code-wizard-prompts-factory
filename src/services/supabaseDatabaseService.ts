@@ -205,7 +205,10 @@ class SupabaseDatabaseService {
       .upsert({
         user_id: userId,
         setting_key: key,
-        setting_value: value
+        setting_value: value,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id,setting_key'
       });
 
     if (error) {
