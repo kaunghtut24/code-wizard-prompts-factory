@@ -413,63 +413,31 @@ class SearchService {
   }
 
   private async performDuckDuckGoSearch(query: string, maxResults: number): Promise<SearchResponse> {
-    // Use DuckDuckGo instant answer API directly - it supports CORS
-    const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
-    
     try {
-      const response = await this.fetchWithTimeout(ddgUrl, {}, 5000); // Shorter timeout for direct API
+      // Use Supabase Edge Function to avoid CORS issues
+      const functionUrl = 'https://epwkfzfoeyhfpziwiojl.supabase.co/functions/v1/duckduckgo-search'
       
+      const response = await this.fetchWithTimeout(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          maxResults
+        })
+      }, 8000)
+
       if (!response.ok) {
-        throw new Error(`DuckDuckGo request failed: ${response.status} ${response.statusText}`);
+        throw new Error(`DuckDuckGo Edge Function failed: ${response.status} ${response.statusText}`)
       }
 
-      const data = await response.json();
-      const results: SearchResult[] = [];
+      const searchResponse = await response.json()
+      return searchResponse
 
-      // DuckDuckGo instant answers
-      if (data.Abstract && data.AbstractText) {
-        results.push({
-          title: data.Heading || 'Instant Answer',
-          link: data.AbstractURL || `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
-          snippet: data.AbstractText,
-          position: 1
-        });
-      }
-
-      // Related topics
-      if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
-        data.RelatedTopics.slice(0, Math.max(1, maxResults - 1)).forEach((topic: any, index: number) => {
-          if (topic.Text && topic.FirstURL) {
-            results.push({
-              title: topic.Text.split(' - ')[0] || 'Related Topic',
-              link: topic.FirstURL,
-              snippet: topic.Text,
-              position: index + 2
-            });
-          }
-        });
-      }
-
-      // If no instant answers, create a generic search result
-      if (results.length === 0) {
-        results.push({
-          title: `Search results for "${query}"`,
-          link: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
-          snippet: `No instant answers found. Click to search on DuckDuckGo for "${query}".`,
-          position: 1
-        });
-      }
-
-      return {
-        results: results.slice(0, maxResults),
-        query,
-        timestamp: Date.now(),
-        cached: false,
-        provider: 'duckduckgo'
-      };
     } catch (error) {
-      // If direct API fails, provide a fallback search link
-      console.warn('DuckDuckGo API failed, providing fallback:', error);
+      // If edge function fails, provide a fallback search link
+      console.warn('DuckDuckGo Edge Function failed, providing fallback:', error)
       return {
         results: [{
           title: `Search for "${query}" on DuckDuckGo`,
@@ -481,7 +449,7 @@ class SearchService {
         timestamp: Date.now(),
         cached: false,
         provider: 'duckduckgo'
-      };
+      }
     }
   }
 

@@ -375,6 +375,8 @@ class SupabaseDatabaseService {
         query,
         results,
         expires_at: expiresAt
+      }, {
+        onConflict: 'user_id,query_hash'
       });
 
     if (error) {
