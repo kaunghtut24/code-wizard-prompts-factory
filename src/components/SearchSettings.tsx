@@ -142,8 +142,17 @@ const SearchSettings: React.FC = () => {
       setTestingConnection(true);
       console.log('Testing connection with provider:', searchProvider);
       
-      // For DuckDuckGo, test directly without configuration
+      // For DuckDuckGo, test directly without configuration changes
       if (searchProvider === 'duckduckgo') {
+        // Temporarily configure the service to use DuckDuckGo
+        const currentConfig = await searchService.getConfiguration();
+        const testConfig = {
+          ...currentConfig,
+          provider: 'duckduckgo'
+        };
+        
+        await searchService.configure(testConfig);
+        
         const result = await searchService.search('test query', { 
           maxResults: 1,
           useCache: false 
