@@ -129,7 +129,7 @@ const SearchSettings: React.FC = () => {
   };
 
   const testConnection = async () => {
-    if (!isConnected) {
+    if (searchProvider !== 'duckduckgo' && !isConnected) {
       toast({
         title: "Configuration Required",
         description: "Please configure your API key first.",
@@ -142,7 +142,25 @@ const SearchSettings: React.FC = () => {
       setTestingConnection(true);
       console.log('Testing connection with provider:', searchProvider);
       
-      // First save the current configuration to ensure the service uses it
+      // For DuckDuckGo, test directly without configuration
+      if (searchProvider === 'duckduckgo') {
+        const result = await searchService.search('test query', { 
+          maxResults: 1,
+          useCache: false 
+        });
+        
+        if (result.results.length > 0 && !result.results[0].title.includes('Search Service Unavailable')) {
+          toast({
+            title: "Connection Successful",
+            description: "DuckDuckGo search is working correctly.",
+          });
+        } else {
+          throw new Error('No valid results returned from search service');
+        }
+        return;
+      }
+      
+      // For API-based providers, configure first
       const testConfig = {
         provider: searchProvider,
         serpApiKey: serpApiKey.trim() || undefined,
