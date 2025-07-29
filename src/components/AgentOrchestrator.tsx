@@ -92,12 +92,14 @@ const AgentOrchestrator: React.FC<AgentOrchestratorProps> = ({
 
   return (
     <>
-      <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+      <Card className="bg-gradient-subtle border-accent/20">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="h-6 w-6 text-purple-600" />
-              <CardTitle>Agent Orchestrator</CardTitle>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Brain className="h-5 w-5 text-primary" />
+              </div>
+              <CardTitle className="text-xl font-semibold text-foreground">Agent Orchestrator</CardTitle>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={promptService.hasCustomPrompt('orchestrator') ? "default" : "secondary"} className="text-xs">
@@ -121,33 +123,39 @@ const AgentOrchestrator: React.FC<AgentOrchestratorProps> = ({
         <CardContent className="space-y-6">
           {/* How it works */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-              <Target className="h-8 w-8 text-blue-500" />
+            <div className="flex items-center gap-3 p-4 bg-card rounded-lg border border-border hover:border-accent/50 transition-colors">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Target className="h-6 w-6 text-blue-500" />
+              </div>
               <div>
-                <h4 className="font-semibold text-sm">Analyze</h4>
+                <h4 className="font-semibold text-sm text-foreground">Analyze</h4>
                 <p className="text-xs text-muted-foreground">Parse intent & complexity</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-              <Workflow className="h-8 w-8 text-yellow-500" />
+            <div className="flex items-center gap-3 p-4 bg-card rounded-lg border border-border hover:border-accent/50 transition-colors">
+              <div className="p-2 rounded-lg bg-yellow-500/10">
+                <Workflow className="h-6 w-6 text-yellow-500" />
+              </div>
               <div>
-                <h4 className="font-semibold text-sm">Orchestrate</h4>
+                <h4 className="font-semibold text-sm text-foreground">Orchestrate</h4>
                 <p className="text-xs text-muted-foreground">Route to agent(s)</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
-              <CheckCircle className="h-8 w-8 text-green-500" />
+            <div className="flex items-center gap-3 p-4 bg-card rounded-lg border border-border hover:border-accent/50 transition-colors">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <CheckCircle className="h-6 w-6 text-green-500" />
+              </div>
               <div>
-                <h4 className="font-semibold text-sm">Synthesize</h4>
+                <h4 className="font-semibold text-sm text-foreground">Synthesize</h4>
                 <p className="text-xs text-muted-foreground">Combine results</p>
               </div>
             </div>
           </div>
 
           {/* Available Agents */}
-          <div className="bg-white p-4 rounded-lg border">
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <Users className="h-4 w-4" />
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <h4 className="font-semibold mb-3 flex items-center gap-2 text-foreground">
+              <Users className="h-4 w-4 text-primary" />
               Specialized Agents
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -157,7 +165,7 @@ const AgentOrchestrator: React.FC<AgentOrchestratorProps> = ({
                 'Performance Optimizer', 'Architecture Reviewer', 'GitHub Assistant',
                 'Semantic Search', 'MCP Analyzer'
               ].map((agent) => (
-                <Badge key={agent} variant="outline" className="text-xs justify-center py-1 whitespace-nowrap">
+                <Badge key={agent} variant="outline" className="text-xs justify-center py-2 whitespace-nowrap border-accent/50 hover:bg-accent/10 transition-colors">
                   {agent}
                 </Badge>
               ))}

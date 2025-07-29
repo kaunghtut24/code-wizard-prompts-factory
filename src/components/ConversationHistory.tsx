@@ -168,12 +168,14 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="w-full max-w-7xl h-[90vh] bg-background rounded-lg shadow-lg flex flex-col">
         {/* Header */}
-        <div className="border-b p-6 flex-shrink-0">
+        <div className="border-b border-border p-6 flex-shrink-0 bg-accent/5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <History className="h-6 w-6 text-purple-600" />
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <History className="h-5 w-5 text-primary" />
+              </div>
               <div>
-                <h2 className="text-xl font-semibold">Conversation History</h2>
+                <h2 className="text-xl font-semibold text-foreground">Conversation History</h2>
                 <p className="text-sm text-muted-foreground">
                   {storageStats.conversationCount || 0} conversations stored
                 </p>
@@ -233,10 +235,10 @@ const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 ) : filteredConversations.map((conversation) => (
                   <Card
                     key={conversation.id}
-                    className={`cursor-pointer transition-all hover:shadow-md ${
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:border-accent/50 ${
                       selectedConversation?.id === conversation.id 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200'
+                        ? 'border-primary bg-primary/5 shadow-sm' 
+                        : 'border-border hover:bg-accent/5'
                     }`}
                     onClick={() => setSelectedConversation(conversation)}
                   >

@@ -229,27 +229,29 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({ isOpen, onClose }) =>
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Settings className="h-6 w-6" />
+        <CardTitle className="flex items-center gap-3 text-xl font-semibold text-foreground">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Settings className="h-5 w-5 text-primary" />
+          </div>
           AI Model Configuration
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-muted-foreground">
           Configure your AI provider and model settings for the coding assistant
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Connection Status Alert */}
         {connectionStatus === 'error' && connectionError && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
             <XCircle className="h-4 w-4" />
-            <AlertDescription>{connectionError}</AlertDescription>
+            <AlertDescription className="text-destructive-foreground">{connectionError}</AlertDescription>
           </Alert>
         )}
         
         {connectionStatus === 'success' && (
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
+          <Alert className="border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20">
+            <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <AlertDescription className="text-emerald-800 dark:text-emerald-300">
               Connection test successful! Configuration is working properly.
             </AlertDescription>
           </Alert>

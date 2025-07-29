@@ -378,16 +378,18 @@ const SearchSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-6 w-6 text-blue-600" />
-            Web Search Settings
-          </CardTitle>
-          <CardDescription>
-            Configure web search functionality with multiple provider options
-          </CardDescription>
-        </CardHeader>
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-xl font-semibold text-foreground">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Globe className="h-5 w-5 text-primary" />
+              </div>
+              Web Search Settings
+            </CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Configure web search functionality with multiple provider options
+            </CardDescription>
+          </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -416,19 +418,20 @@ const SearchSettings: React.FC = () => {
               </SelectContent>
             </Select>
             {currentProviderInfo && (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium">{currentProviderInfo.name}</p>
-                <p className="text-sm text-muted-foreground">{currentProviderInfo.description}</p>
+              <div className="p-4 bg-accent/50 border border-accent rounded-lg">
+                <p className="text-sm font-semibold text-foreground">{currentProviderInfo.name}</p>
+                <p className="text-sm text-muted-foreground mt-1">{currentProviderInfo.description}</p>
                 {currentProviderInfo.requiresKey && (
-                  <p className="text-xs text-blue-600 mt-1">
+                  <p className="text-xs text-primary mt-2 flex items-center gap-1">
+                    <Key className="h-3 w-3" />
                     API key required from{' '}
                     <a 
                       href={currentProviderInfo.website} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="underline"
+                      className="underline hover:text-primary/80 transition-colors"
                     >
-                      {currentProviderInfo.website}
+                      provider dashboard
                     </a>
                   </p>
                 )}
