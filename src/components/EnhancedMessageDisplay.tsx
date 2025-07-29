@@ -89,7 +89,7 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
       
       return (
         <code 
-          className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-red-600 dark:text-red-400" 
+          className="bg-muted px-2 py-1 rounded text-sm font-mono text-accent-foreground border" 
           {...props}
         >
           {children}
@@ -101,50 +101,50 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
       return <>{children}</>;
     },
     h1: ({ children }: any) => (
-      <h1 className="text-2xl font-bold mt-6 mb-4 text-gray-900 dark:text-gray-100">{children}</h1>
+      <h1 className="text-2xl font-bold mt-6 mb-4 text-foreground">{children}</h1>
     ),
     h2: ({ children }: any) => (
-      <h2 className="text-xl font-semibold mt-5 mb-3 text-gray-900 dark:text-gray-100">{children}</h2>
+      <h2 className="text-xl font-semibold mt-5 mb-3 text-foreground">{children}</h2>
     ),
     h3: ({ children }: any) => (
-      <h3 className="text-lg font-medium mt-4 mb-2 text-gray-900 dark:text-gray-100">{children}</h3>
+      <h3 className="text-lg font-medium mt-4 mb-2 text-foreground">{children}</h3>
     ),
     p: ({ children }: any) => (
-      <p className="mb-3 text-gray-700 dark:text-gray-300 leading-relaxed">{children}</p>
+      <p className="mb-3 text-foreground leading-relaxed">{children}</p>
     ),
     ul: ({ children }: any) => (
-      <ul className="mb-3 ml-6 space-y-1 list-disc text-gray-700 dark:text-gray-300">{children}</ul>
+      <ul className="mb-3 ml-6 space-y-1 list-disc text-foreground">{children}</ul>
     ),
     ol: ({ children }: any) => (
-      <ol className="mb-3 ml-6 space-y-1 list-decimal text-gray-700 dark:text-gray-300">{children}</ol>
+      <ol className="mb-3 ml-6 space-y-1 list-decimal text-foreground">{children}</ol>
     ),
     li: ({ children }: any) => (
-      <li className="text-gray-700 dark:text-gray-300">{children}</li>
+      <li className="text-foreground">{children}</li>
     ),
     blockquote: ({ children }: any) => (
-      <blockquote className="border-l-4 border-blue-500 pl-4 my-4 italic text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 py-2">
+      <blockquote className="border-l-4 border-primary pl-4 my-4 italic text-muted-foreground bg-muted rounded-r py-3 px-2">
         {children}
       </blockquote>
     ),
     table: ({ children }: any) => (
-      <div className="overflow-x-auto my-4">
-        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+      <div className="overflow-x-auto my-4 rounded-lg border">
+        <table className="min-w-full border-collapse">
           {children}
         </table>
       </div>
     ),
     th: ({ children }: any) => (
-      <th className="border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 px-4 py-2 text-left font-semibold">
+      <th className="border-b bg-muted px-4 py-3 text-left font-semibold text-foreground">
         {children}
       </th>
     ),
     td: ({ children }: any) => (
-      <td className="border border-gray-300 dark:border-gray-600 px-4 py-2">{children}</td>
+      <td className="border-b px-4 py-3 text-foreground">{children}</td>
     ),
     a: ({ href, children }: any) => (
       <a 
         href={href} 
-        className="text-blue-600 dark:text-blue-400 hover:underline" 
+        className="text-primary hover:text-primary/80 underline-offset-4 hover:underline transition-colors" 
         target="_blank" 
         rel="noopener noreferrer"
       >
@@ -152,10 +152,10 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
       </a>
     ),
     strong: ({ children }: any) => (
-      <strong className="font-semibold text-gray-900 dark:text-gray-100">{children}</strong>
+      <strong className="font-semibold text-foreground">{children}</strong>
     ),
     em: ({ children }: any) => (
-      <em className="italic text-gray-800 dark:text-gray-200">{children}</em>
+      <em className="italic text-muted-foreground">{children}</em>
     )
   };
 
@@ -172,21 +172,21 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
   }
 
   return (
-    <div className={`rounded-lg p-4 border shadow-sm w-full ${
+    <div className={`rounded-lg p-4 border shadow-sm w-full transition-colors ${
       isUser 
-        ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800' 
-        : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
+        ? 'bg-primary/5 border-primary/20' 
+        : 'bg-card border-border'
     }`}>
       <div className="flex items-center gap-2 mb-3">
         {isUser ? (
           <>
-            <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="font-medium text-blue-700 dark:text-blue-300">You</span>
+            <User className="h-4 w-4 text-primary" />
+            <span className="font-medium text-primary">You</span>
           </>
         ) : (
           <>
-            <Bot className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-            <span className="font-medium text-gray-700 dark:text-gray-300">
+            <Bot className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium text-foreground">
               {agentType ? agentType.charAt(0).toUpperCase() + agentType.slice(1) : 'Assistant'}
             </span>
             {agentType && (
@@ -196,13 +196,13 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
             )}
           </>
         )}
-        <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
+        <span className="text-xs text-muted-foreground ml-auto">
           {formatTimestamp(timestamp)}
         </span>
       </div>
 
       {hasSearchResults && !isUser && (
-        <div className="flex items-center gap-1 mb-2 text-xs text-green-600 dark:text-green-400">
+        <div className="flex items-center gap-1 mb-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded">
           <Globe className="h-3 w-3" />
           Web search results included
         </div>
@@ -216,15 +216,15 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
         </div>
         
         {!isUser && (
-          <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 pt-3 border-t border-border mt-3">
             <Button
               variant="outline"
               size="sm"
               onClick={handleCopy}
-              className="flex items-center gap-1"
+              className="flex items-center gap-1 text-xs"
             >
               {copied ? (
-                <Check className="h-3 w-3 text-green-600" />
+                <Check className="h-3 w-3 text-emerald-600" />
               ) : (
                 <Copy className="h-3 w-3" />
               )}

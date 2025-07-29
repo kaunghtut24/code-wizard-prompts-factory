@@ -98,6 +98,37 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .prose {
+    @apply text-foreground;
+  }
+  
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6 {
+    @apply text-foreground;
+  }
+  
+  .prose strong {
+    @apply text-foreground font-semibold;
+  }
+  
+  .prose code {
+    @apply text-accent-foreground bg-muted px-1 py-0.5 rounded text-sm;
+  }
+  
+  .prose blockquote {
+    @apply text-muted-foreground border-l-primary;
+  }
+  
+  .prose a {
+    @apply text-primary hover:text-primary/80;
   }
 }

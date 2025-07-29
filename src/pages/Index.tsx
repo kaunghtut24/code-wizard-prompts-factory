@@ -157,20 +157,22 @@ const Index = () => {
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Chat Area */}
           <div className="flex-1 flex flex-col min-w-0">
-            <div className="p-6">
+            <div className="p-6 flex-shrink-0">
               <DashboardStats 
                 currentAgent={currentAgent}
                 recentConversations={recentConversations}
               />
             </div>
-            <InteractiveChatInterface
-              activeAgent={currentAgent}
-              agentName={getAgentName(currentAgent)}
-            />
+            <div className="flex-1 p-6 pt-0 min-h-0">
+              <InteractiveChatInterface
+                activeAgent={currentAgent}
+                agentName={getAgentName(currentAgent)}
+              />
+            </div>
           </div>
 
           {/* Side Panel */}
-          <div className="w-80 border-l bg-card flex flex-col flex-shrink-0">
+          <div className="w-80 border-l bg-card/50 backdrop-blur-sm flex flex-col flex-shrink-0">
             {showAgentOrchestrator ? (
               <div className="flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between p-4 border-b flex-shrink-0">

@@ -45,15 +45,15 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
   const lines = content.split('\n');
 
   return (
-    <Card className="my-4 border-l-4 border-l-blue-500 bg-slate-50">
+    <Card className="my-4 border-l-4 border-l-primary bg-muted/30">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Code2 className="h-4 w-4 text-blue-600" />
+            <Code2 className="h-4 w-4 text-primary" />
             <CardTitle className="text-sm font-semibold">
               {title || 'Code Snippet'}
             </CardTitle>
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs font-mono">
               {language}
             </Badge>
           </div>
@@ -61,10 +61,10 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
             variant="outline"
             size="sm"
             onClick={handleCopy}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 text-xs"
           >
             {copied ? (
-              <Check className="h-3 w-3 text-green-600" />
+              <Check className="h-3 w-3 text-emerald-600" />
             ) : (
               <Copy className="h-3 w-3" />
             )}
@@ -72,21 +72,21 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         <div 
-          className="relative bg-gray-900 rounded-lg overflow-hidden"
+          className="relative bg-slate-950 dark:bg-slate-900 rounded-b-lg overflow-hidden border-t"
           style={{ maxHeight }}
         >
           <div className="overflow-auto p-4">
             <pre className="text-sm">
-              <code className="text-gray-100 font-mono">
+              <code className="text-slate-100 font-mono leading-relaxed">
                 {showLineNumbers ? (
                   lines.map((line, index) => (
-                    <div key={index} className="flex">
-                      <span className="text-gray-500 text-xs mr-4 select-none w-8 text-right">
+                    <div key={index} className="flex hover:bg-slate-800/50 transition-colors">
+                      <span className="text-slate-500 text-xs mr-4 select-none w-8 text-right leading-relaxed">
                         {index + 1}
                       </span>
-                      <span className="flex-1">{line}</span>
+                      <span className="flex-1 leading-relaxed">{line}</span>
                     </div>
                   ))
                 ) : (
