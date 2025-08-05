@@ -209,7 +209,7 @@ const EnhancedMessageDisplay: React.FC<EnhancedMessageDisplayProps> = ({
       )}
 
       <div className="space-y-3">
-        <div className="prose prose-sm max-w-none dark:prose-invert">
+        <div className="prose prose-sm max-w-none dark:prose-invert text-left">
           <ReactMarkdown components={markdownComponents}>
             {content}
           </ReactMarkdown>
