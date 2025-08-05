@@ -349,7 +349,7 @@ Remember to be contextually aware of the entire conversation flow and any attach
 
   return (
     <div className="h-full flex flex-col">
-      <Card className="flex-1 flex flex-col min-h-0">
+      <Card className="flex-1 flex flex-col min-h-[600px] max-h-[80vh]">
         <CardHeader className="pb-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -415,8 +415,8 @@ Remember to be contextually aware of the entire conversation flow and any attach
 
         <CardContent className="flex-1 flex flex-col space-y-4 min-h-0">
           {/* Messages Area with proper scrolling */}
-          <div className="flex-1 min-h-0">
-            <ScrollArea className="h-full">
+          <div className="flex-1 min-h-[400px]">
+            <ScrollArea className="h-full min-h-[400px]">
               <div className="space-y-4 pr-4">
                 {messages.length === 0 ? (
                   <div className="text-center text-muted-foreground py-12">

@@ -74,16 +74,16 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
       </CardHeader>
       <CardContent className="p-0">
         <div 
-          className="relative bg-slate-950 dark:bg-slate-900 rounded-b-lg overflow-hidden border-t"
+          className="relative bg-slate-900 dark:bg-slate-950 rounded-b-lg overflow-hidden border-t"
           style={{ maxHeight }}
         >
           <div className="overflow-auto p-4">
             <pre className="text-sm">
-              <code className="text-slate-100 font-mono leading-relaxed">
+              <code className="text-slate-50 dark:text-slate-100 font-mono leading-relaxed">
                 {showLineNumbers ? (
                   lines.map((line, index) => (
-                    <div key={index} className="flex hover:bg-slate-800/50 transition-colors">
-                      <span className="text-slate-500 text-xs mr-4 select-none w-8 text-right leading-relaxed">
+                    <div key={index} className="flex hover:bg-slate-700/30 dark:hover:bg-slate-800/50 transition-colors">
+                      <span className="text-slate-400 dark:text-slate-500 text-xs mr-4 select-none w-8 text-right leading-relaxed">
                         {index + 1}
                       </span>
                       <span className="flex-1 leading-relaxed">{line}</span>
