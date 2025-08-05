@@ -124,12 +124,12 @@ const Index = () => {
       {/* Chat Interface */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="border-b bg-card px-6 py-4 flex-shrink-0">
+        <header className="border-b bg-background/95 backdrop-blur-sm px-6 py-4 flex-shrink-0 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Bot className="h-6 w-6 text-primary" />
-                <h1 className="text-xl font-semibold">AI Agent Orchestrator</h1>
+                <h1 className="text-xl font-semibold text-foreground">AI Agent Orchestrator</h1>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -137,6 +137,7 @@ const Index = () => {
                 variant="outline" 
                 size="sm"
                 onClick={() => setShowSettings(true)}
+                className="bg-background hover:bg-accent"
               >
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
@@ -145,6 +146,7 @@ const Index = () => {
                 variant="outline" 
                 size="sm"
                 onClick={handleSignOut}
+                className="bg-background hover:bg-accent"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
@@ -172,11 +174,11 @@ const Index = () => {
           </div>
 
           {/* Side Panel */}
-          <div className="w-80 border-l bg-card border-border flex flex-col flex-shrink-0 shadow-sm">
+          <div className="w-80 border-l bg-background/95 backdrop-blur-sm border-border flex flex-col flex-shrink-0 shadow-lg">
             {showAgentOrchestrator ? (
               <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-                  <h3 className="font-medium">Agent Orchestrator</h3>
+                <div className="flex items-center justify-between p-4 border-b border-border bg-background/50 flex-shrink-0">
+                  <h3 className="font-medium text-foreground">Agent Orchestrator</h3>
                   <Button
                     variant="outline"
                     size="sm"
@@ -198,9 +200,9 @@ const Index = () => {
               </div>
             ) : (
               <>
-                <div className="p-4 border-b flex-shrink-0">
+                <div className="p-4 border-b border-border bg-background/50 flex-shrink-0">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium">Agent Selection</h3>
+                    <h3 className="font-medium text-foreground">Agent Selection</h3>
                     <Button
                       variant="outline"
                       size="sm"
@@ -229,9 +231,9 @@ const Index = () => {
                 </div>
 
                 <div className="flex-1 flex flex-col min-h-0">
-                  <div className="p-4 border-b flex-shrink-0">
+                  <div className="p-4 border-b border-border bg-background/50 flex-shrink-0">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium">Recent Conversations</h3>
+                      <h3 className="font-medium text-foreground">Recent Conversations</h3>
                       <Button
                         variant="outline"
                         size="sm"
