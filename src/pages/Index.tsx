@@ -172,7 +172,7 @@ const Index = () => {
           </div>
 
           {/* Side Panel */}
-          <div className="w-80 border-l bg-card/50 backdrop-blur-sm flex flex-col flex-shrink-0">
+          <div className="w-80 border-l bg-card border-border flex flex-col flex-shrink-0 shadow-sm">
             {showAgentOrchestrator ? (
               <div className="flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
@@ -270,7 +270,7 @@ const Index = () => {
 
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0">
+        <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0 bg-card border-border">
           <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
