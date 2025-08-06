@@ -64,7 +64,9 @@ const Index = () => {
 
   const loadRecentConversations = async () => {
     try {
+      console.log('Loading recent conversations for agent:', currentAgent, 'isAuthenticated:', databaseService.isAuthenticated());
       const conversations = await databaseService.getConversationsByAgent(currentAgent);
+      console.log('Loaded conversations count:', conversations.length);
       setRecentConversations(conversations.slice(0, 5)); // Show only 5 most recent
     } catch (error) {
       console.error('Error loading recent conversations:', error);
@@ -167,6 +169,7 @@ const Index = () => {
             <InteractiveChatInterface
               activeAgent={currentAgent}
               agentName={getAgentName(currentAgent)}
+              onConversationSaved={loadRecentConversations}
             />
           </div>
         </div>

@@ -48,11 +48,13 @@ interface InteractiveChatMessage {
 interface InteractiveChatInterfaceProps {
   activeAgent: string;
   agentName: string;
+  onConversationSaved?: () => void;
 }
 
 const InteractiveChatInterface: React.FC<InteractiveChatInterfaceProps> = ({
   activeAgent,
-  agentName
+  agentName,
+  onConversationSaved
 }) => {
   const [messages, setMessages] = useState<InteractiveChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -216,17 +218,30 @@ const InteractiveChatInterface: React.FC<InteractiveChatInterfaceProps> = ({
         }
         
         // Save to database with correct field names
-        databaseService.saveConversation({
-          user_input: userInput,
-          agent_type: 'collaborative',
-          ai_output: finalOutput || 'Collaborative workflow completed',
-          metadata: {
-            workflowType: 'collaborative',
-            collaborativeAgents: taskAnalysis.agents,
-            complexity: taskAnalysis.complexity,
-            processingTime: Date.now() - userMessage.timestamp
-          }
-        });
+        try {
+          console.log('Attempting to save collaborative conversation to database...', {
+            user_input: userInput,
+            agent_type: 'collaborative',
+            isAuthenticated: databaseService.isAuthenticated()
+          });
+          
+          await databaseService.saveConversation({
+            user_input: userInput,
+            agent_type: 'collaborative',
+            ai_output: finalOutput || 'Collaborative workflow completed',
+            metadata: {
+              workflowType: 'collaborative',
+              collaborativeAgents: taskAnalysis.agents,
+              complexity: taskAnalysis.complexity,
+              processingTime: Date.now() - userMessage.timestamp
+            }
+          });
+          
+          console.log('Collaborative conversation saved successfully to database');
+          onConversationSaved?.();
+        } catch (saveError) {
+          console.error('Failed to save collaborative conversation to database:', saveError);
+        }
         
         workflowService.clearWorkflow(workflow.id);
         break;
@@ -318,16 +333,29 @@ Remember to be contextually aware of the entire conversation flow and any attach
     setMessages(prev => [...prev, aiMessage]);
 
     // Save conversation to database with correct field names
-    databaseService.saveConversation({
-      user_input: input.trim(),
-      agent_type: activeAgent,
-      ai_output: enhancedContent,
-      metadata: {
-        hasCodeSnippets: response.content.includes('```'),
-        searchResults: searchResults.length > 0 ? searchResults : undefined,
-        processingTime: Date.now() - userMessage.timestamp
-      }
-    });
+    try {
+      console.log('Attempting to save conversation to database...', {
+        user_input: input.trim(),
+        agent_type: activeAgent,
+        isAuthenticated: databaseService.isAuthenticated()
+      });
+      
+      await databaseService.saveConversation({
+        user_input: input.trim(),
+        agent_type: activeAgent,
+        ai_output: enhancedContent,
+        metadata: {
+          hasCodeSnippets: response.content.includes('```'),
+          searchResults: searchResults.length > 0 ? searchResults : undefined,
+          processingTime: Date.now() - userMessage.timestamp
+        }
+      });
+      
+      console.log('Conversation saved successfully to database');
+      onConversationSaved?.();
+    } catch (saveError) {
+      console.error('Failed to save conversation to database:', saveError);
+    }
 
     toast({
       title: "Message Sent",
