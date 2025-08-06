@@ -120,153 +120,150 @@ const Index = () => {
   }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Chat Interface */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="border-b bg-background/95 backdrop-blur-sm px-6 py-4 flex-shrink-0 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Bot className="h-6 w-6 text-primary" />
-                <h1 className="text-xl font-semibold text-foreground">AI Agent Orchestrator</h1>
-              </div>
-            </div>
+    <div className="h-screen flex flex-col bg-background">
+      {/* Fixed Header */}
+      <header className="border-b bg-background/95 backdrop-blur-sm px-6 py-4 flex-shrink-0 shadow-sm z-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowSettings(true)}
-                className="bg-background hover:bg-accent"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleSignOut}
-                className="bg-background hover:bg-accent"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
+              <Bot className="h-6 w-6 text-primary" />
+              <h1 className="text-xl font-semibold text-foreground">AI Agent Orchestrator</h1>
             </div>
           </div>
-        </header>
-
-        {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden min-h-0">
-          {/* Chat Area */}
-          <div className="flex-1 flex flex-col min-w-0">
-            <div className="p-6 flex-shrink-0">
-              <DashboardStats 
-                currentAgent={currentAgent}
-                recentConversations={recentConversations}
-              />
-            </div>
-            <div className="flex-1 p-6 pt-0 min-h-0">
-              <InteractiveChatInterface
-                activeAgent={currentAgent}
-                agentName={getAgentName(currentAgent)}
-              />
-            </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowSettings(true)}
+              className="bg-background hover:bg-accent"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleSignOut}
+              className="bg-background hover:bg-accent"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
+        </div>
+      </header>
 
-          {/* Side Panel */}
-          <div className="w-80 border-l bg-background/95 backdrop-blur-sm border-border flex flex-col flex-shrink-0 shadow-lg">
-            {showAgentOrchestrator ? (
-              <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex items-center justify-between p-4 border-b border-border bg-background/50 flex-shrink-0">
-                  <h3 className="font-medium text-foreground">Agent Orchestrator</h3>
+      {/* Main Content - Scrollable */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col">
+          <div className="p-6 flex-shrink-0">
+            <DashboardStats 
+              currentAgent={currentAgent}
+              recentConversations={recentConversations}
+            />
+          </div>
+          <div className="flex-1 px-6 pb-6 overflow-hidden">
+            <InteractiveChatInterface
+              activeAgent={currentAgent}
+              agentName={getAgentName(currentAgent)}
+            />
+          </div>
+        </div>
+
+        {/* Fixed Side Panel with Scrollable Content */}
+        <div className="w-80 border-l bg-background/95 backdrop-blur-sm border-border flex flex-col flex-shrink-0 shadow-lg">
+          {showAgentOrchestrator ? (
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex items-center justify-between p-4 border-b border-border bg-background/50 flex-shrink-0">
+                <h3 className="font-medium text-foreground">Agent Orchestrator</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAgentOrchestrator(false)}
+                >
+                  Close
+                </Button>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-3">
+                  <CompactAgentOrchestrator 
+                    input=""
+                    setOutput={() => {}}
+                    isProcessing={false}
+                    setIsProcessing={() => {}}
+                  />
+                </div>
+              </ScrollArea>
+            </div>
+          ) : (
+            <>
+              <div className="p-4 border-b border-border bg-background/50 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium text-foreground">Agent Selection</h3>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowAgentOrchestrator(false)}
+                    onClick={() => setShowAgentOrchestrator(true)}
                   >
-                    Close
+                    <Bot className="h-4 w-4 mr-2" />
+                    Orchestrator
                   </Button>
                 </div>
-                <ScrollArea className="flex-1">
-                  <div className="p-3">
-                    <CompactAgentOrchestrator 
-                      input=""
-                      setOutput={() => {}}
-                      isProcessing={false}
-                      setIsProcessing={() => {}}
-                    />
-                  </div>
-                </ScrollArea>
+                <Select value={currentAgent} onValueChange={setCurrentAgent}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="general">💬 General Chat</SelectItem>
+                    <SelectItem value="code">💻 Code Generation</SelectItem>
+                    <SelectItem value="refactor">🔄 Code Refactor</SelectItem>
+                    <SelectItem value="bug-fix">🐛 Bug Fix</SelectItem>
+                    <SelectItem value="test">🧪 Test Generator</SelectItem>
+                    <SelectItem value="documentation">📚 Documentation</SelectItem>
+                    <SelectItem value="semantic-search">🔍 Semantic Search</SelectItem>
+                    <SelectItem value="mcp-analysis">🔬 MCP Analysis</SelectItem>
+                    <SelectItem value="github">🐙 GitHub Agent</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            ) : (
-              <>
+
+              <div className="flex-1 flex flex-col min-h-0">
                 <div className="p-4 border-b border-border bg-background/50 flex-shrink-0">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium text-foreground">Agent Selection</h3>
+                    <h3 className="font-medium text-foreground">Recent Conversations</h3>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setShowAgentOrchestrator(true)}
+                      onClick={() => setShowConversationHistory(true)}
                     >
-                      <Bot className="h-4 w-4 mr-2" />
-                      Orchestrator
+                      View All
                     </Button>
                   </div>
-                  <Select value={currentAgent} onValueChange={setCurrentAgent}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">💬 General Chat</SelectItem>
-                      <SelectItem value="code">💻 Code Generation</SelectItem>
-                      <SelectItem value="refactor">🔄 Code Refactor</SelectItem>
-                      <SelectItem value="bug-fix">🐛 Bug Fix</SelectItem>
-                      <SelectItem value="test">🧪 Test Generator</SelectItem>
-                      <SelectItem value="documentation">📚 Documentation</SelectItem>
-                      <SelectItem value="semantic-search">🔍 Semantic Search</SelectItem>
-                      <SelectItem value="mcp-analysis">🔬 MCP Analysis</SelectItem>
-                      <SelectItem value="github">🐙 GitHub Agent</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
-
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="p-4 border-b border-border bg-background/50 flex-shrink-0">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium text-foreground">Recent Conversations</h3>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowConversationHistory(true)}
-                      >
-                        View All
-                      </Button>
-                    </div>
+                
+                <ScrollArea className="flex-1">
+                  <div className="p-4 space-y-2">
+                    {recentConversations.length > 0 ? (
+                      recentConversations.map((conversation) => (
+                        <ConversationHistoryItem
+                          key={conversation.id}
+                          conversation={conversation}
+                          onSelect={handleConversationSelect}
+                          onDelete={handleConversationDelete}
+                          isSelected={selectedConversationId === conversation.id}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No conversations yet for this agent
+                      </p>
+                    )}
                   </div>
-                  
-                  <ScrollArea className="flex-1">
-                    <div className="p-4 space-y-2">
-                      {recentConversations.length > 0 ? (
-                        recentConversations.map((conversation) => (
-                          <ConversationHistoryItem
-                            key={conversation.id}
-                            conversation={conversation}
-                            onSelect={handleConversationSelect}
-                            onDelete={handleConversationDelete}
-                            isSelected={selectedConversationId === conversation.id}
-                          />
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          No conversations yet for this agent
-                        </p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-              </>
-            )}
-          </div>
+                </ScrollArea>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
