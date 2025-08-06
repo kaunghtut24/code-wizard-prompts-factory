@@ -122,9 +122,9 @@ const Index = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen w-full flex flex-col bg-background overflow-hidden">
       {/* Fixed Header */}
-      <header className="border-b bg-background/95 backdrop-blur-sm px-6 py-4 flex-shrink-0 shadow-sm z-50">
+      <header className="border-b bg-background/95 backdrop-blur-sm px-6 py-3 flex-shrink-0 shadow-sm z-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -156,16 +156,16 @@ const Index = () => {
       </header>
 
       {/* Main Content - Scrollable */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
-          <div className="p-6 flex-shrink-0">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="p-4 flex-shrink-0">
             <DashboardStats 
               currentAgent={currentAgent}
               recentConversations={recentConversations}
             />
           </div>
-          <div className="flex-1 px-6 pb-6 overflow-hidden">
+          <div className="flex-1 px-4 pb-4 overflow-hidden min-h-0">
             <InteractiveChatInterface
               activeAgent={currentAgent}
               agentName={getAgentName(currentAgent)}
@@ -175,7 +175,7 @@ const Index = () => {
         </div>
 
         {/* Fixed Side Panel with Scrollable Content */}
-        <div className="w-80 border-l bg-background/95 backdrop-blur-sm border-border flex flex-col flex-shrink-0 shadow-lg">
+        <div className="w-80 border-l bg-background/95 backdrop-blur-sm border-border flex flex-col flex-shrink-0 shadow-lg min-h-0">
           {showAgentOrchestrator ? (
             <div className="flex-1 flex flex-col min-h-0">
               <div className="flex items-center justify-between p-4 border-b border-border bg-background/50 flex-shrink-0">
@@ -272,7 +272,7 @@ const Index = () => {
 
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0 bg-card border-border">
+        <DialogContent className="max-w-6xl w-[95vw] h-[95vh] flex flex-col p-0 bg-card border-border overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
