@@ -115,6 +115,7 @@ class SupabaseDatabaseService {
 
   async getConversations(): Promise<ConversationEntry[]> {
     const userId = this.requireAuth();
+    console.log('Fetching conversations for user ID:', userId);
     
     const { data, error } = await supabase
       .from('conversations')
@@ -127,6 +128,7 @@ class SupabaseDatabaseService {
       throw error;
     }
 
+    console.log('Fetched conversations from database:', data?.length || 0);
     return (data || []).map(this.transformConversation);
   }
 
