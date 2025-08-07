@@ -122,50 +122,18 @@ const Index = () => {
   }
 
   return (
-    <div className="h-screen w-full flex flex-col bg-background overflow-hidden">
-      {/* Fixed Header */}
-      <header className="border-b bg-background/95 backdrop-blur-sm px-6 py-3 flex-shrink-0 shadow-sm z-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Bot className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-semibold text-foreground">AI Agent Orchestrator</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowSettings(true)}
-              className="bg-background hover:bg-accent"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleSignOut}
-              className="bg-background hover:bg-accent"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content - Scrollable */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
+    <div className="h-full w-full flex flex-col bg-background overflow-hidden">
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden min-h-0 p-6">
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="p-4 flex-shrink-0">
+        <div className="flex-1 flex flex-col min-h-0 mr-6">
+          <div className="pb-4 flex-shrink-0">
             <DashboardStats 
               currentAgent={currentAgent}
               recentConversations={recentConversations}
             />
           </div>
-          <div className="flex-1 px-4 pb-4 overflow-hidden min-h-0">
+          <div className="flex-1 overflow-hidden min-h-0">
             <InteractiveChatInterface
               activeAgent={currentAgent}
               agentName={getAgentName(currentAgent)}
@@ -174,34 +142,64 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Fixed Side Panel with Scrollable Content */}
-        <div className="w-80 border-l bg-background/95 backdrop-blur-sm border-border flex flex-col flex-shrink-0 shadow-lg min-h-0">
+        {/* Fixed Side Panel */}
+        <div className="w-80 border-l bg-background/95 backdrop-blur-sm border-border flex flex-col flex-shrink-0 shadow-lg min-h-0 pl-6">
           {showAgentOrchestrator ? (
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex items-center justify-between p-4 border-b border-border bg-background/50 flex-shrink-0">
-                <h3 className="font-medium text-foreground">Agent Orchestrator</h3>
+              <div className="flex items-center justify-between pb-4 border-b border-border bg-background/50 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Agent Orchestrator</h3>
+                </div>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => setShowAgentOrchestrator(false)}
+                  className="hover:bg-accent/50"
                 >
-                  Close
+                  ✕
                 </Button>
               </div>
-              <ScrollArea className="flex-1">
-                <div className="p-3">
-                  <CompactAgentOrchestrator 
-                    input=""
-                    setOutput={() => {}}
-                    isProcessing={false}
-                    setIsProcessing={() => {}}
-                  />
-                </div>
-              </ScrollArea>
+              <div className="flex-1 overflow-hidden min-h-0">
+                <CompactAgentOrchestrator 
+                  input=""
+                  setOutput={() => {}}
+                  isProcessing={false}
+                  setIsProcessing={() => {}}
+                />
+              </div>
             </div>
           ) : (
-            <>
-              <div className="p-4 border-b border-border bg-background/50 flex-shrink-0">
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="pb-4 border-b border-border bg-background/50 flex-shrink-0">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-primary/10">
+                      <Bot className="h-4 w-4 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-foreground">Quick Actions</h3>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowSettings(true)}
+                      size="sm"
+                      className="text-xs"
+                    >
+                      <Settings className="h-3 w-3 mr-1" />
+                      Settings
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleSignOut}
+                      size="sm"
+                      className="text-xs"
+                    >
+                      <LogOut className="h-3 w-3 mr-1" />
+                      Logout
+                    </Button>
+                  </div>
+                </div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-medium text-foreground">Agent Selection</h3>
                   <Button
@@ -232,7 +230,7 @@ const Index = () => {
               </div>
 
               <div className="flex-1 flex flex-col min-h-0">
-                <div className="p-4 border-b border-border bg-background/50 flex-shrink-0">
+                <div className="pb-4 border-b border-border bg-background/50 flex-shrink-0">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-medium text-foreground">Recent Conversations</h3>
                     <Button
@@ -265,7 +263,7 @@ const Index = () => {
                   </div>
                 </ScrollArea>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
